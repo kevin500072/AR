@@ -35,12 +35,11 @@ fun MapScreen(
 ) {
     var showModal by remember { mutableStateOf(false) }
     var selectedModalStation by remember { mutableStateOf(1) }
-    var showWelcomeBubble by remember { mutableStateOf(appState.activeProgress.completedStations == 0) }
-
     val activeProgress = appState.activeProgress
     val activeProfile = appState.activeProfile
 
-    // Auto-dismiss welcome bubble after 6 seconds
+    var showWelcomeBubble by remember { mutableStateOf(activeProgress.completedStationsCount == 0) }
+
     LaunchedEffect(showWelcomeBubble) {
         if (showWelcomeBubble) {
             delay(6000)
@@ -54,7 +53,7 @@ fun MapScreen(
             title = "Estación ${ex.id}: ${ex.name}",
             description = ex.description,
             goal = ex.targetGoal,
-            isUnlocked = activeProgress.completedStations >= (ex.id - 1)
+            isUnlocked = activeProgress.completedStationsCount >= (ex.id - 1)
         )
     }
 
@@ -66,12 +65,10 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 60.dp) // Leave space for bottom bar + insets
+                .padding(bottom = 60.dp)
         ) {
-            // 1. CABECERA SUPERIOR
             MapHeaderBar(appState = appState, onOpenProfile = onOpenProfile)
 
-            // 2. CONTENIDO PRINCIPAL CON SCROLL
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -80,16 +77,16 @@ fun MapScreen(
                     .padding(bottom = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Tarjeta de Progreso Motriz & Evento
                 CoordinationProgressCard(progress = activeProgress)
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Canvas del Sendero Sinuoso (Stitch Version)
                 StitchWindingTrailMap(
                     stations = stations,
-                    completedStations = activeProgress.completedStations,
-                    showWelcomeBubble = showWelcomeBubble,
+                    completedStations = activeProgress.completedStationsCount,
+                    currentStation = activeProgress.currentStation,
+                    isPathCompleted = activeProgress.isPathCompleted,
+                    showWelcomeBubble = showWelcomeBubble && activeProgress.completedStationsCount == 0,
                     onDismissBubble = { showWelcomeBubble = false },
                     onStationClick = { stationId ->
                         selectedModalStation = stationId
@@ -97,24 +94,22 @@ fun MapScreen(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
 
-                // Tarjeta Flotante Cámara Kinemática AR
-                ArCalibrationBottomCard(onCalibrate = { onStartChallenge(1) })
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
 
-        // 3. MODAL INTERACTIVO DE NIVEL
         if (showModal) {
             val station = stations.firstOrNull { it.id == selectedModalStation } ?: stations[0]
             StationModalDialog(
                 station = station,
                 onClose = { showModal = false },
                 onStart = {
-                    showModal = false
-                    onStartChallenge(station.id)
+                    if (station.isUnlocked) {
+                        showModal = false
+                        onStartChallenge(station.id)
+                    }
                 }
             )
         }
@@ -147,7 +142,6 @@ private fun MapHeaderBar(appState: CognokinetAppState, onOpenProfile: () -> Unit
                 HeaderPill(icon = "🧭", text = "Niv. ${progress.level} Explorador", badge = null, color = Color(0xFF4E342E))
             }
 
-            // Avatar Circular de Explorador
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -198,7 +192,7 @@ private fun HeaderPill(icon: String, text: String, badge: String?, color: Color)
 @Composable
 private fun CoordinationProgressCard(progress: StudentProgress) {
     val totalStations = CognokinetConstants.TOTAL_STATIONS
-    val percentInt = ((progress.completedStations.toFloat() / totalStations) * 100).toInt()
+    val percentInt = ((progress.completedStationsCount.toFloat() / totalStations) * 100).toInt()
 
     Column(
         modifier = Modifier
@@ -206,7 +200,6 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
             .padding(top = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Tarjeta de Arena Suave
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -241,7 +234,7 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "${progress.completedStations} de $totalStations Estaciones",
+                                text = if (progress.isPathCompleted) "¡Sendero completado!" else "${progress.completedStationsCount} de $totalStations Estaciones",
                                 color = Color(0xFF6D5A4E),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
@@ -277,34 +270,6 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
                 }
             }
         }
-
-        // Banner de Torneo (solo si existen datos de torneo)
-        if (progress.hasTournamentData && progress.tournamentName != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0xFFD8E6D3), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("🏆 ", fontSize = 14.sp)
-                    Text(
-                        text = progress.tournamentName,
-                        color = CognokinetColors.Forest,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Text("⏱️ 1D / 30m", color = Color(0xFF5D4037), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-        }
     }
 }
 
@@ -312,6 +277,8 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
 private fun StitchWindingTrailMap(
     stations: List<StationInfo>,
     completedStations: Int,
+    currentStation: Int,
+    isPathCompleted: Boolean,
     showWelcomeBubble: Boolean,
     onDismissBubble: () -> Unit,
     onStationClick: (Int) -> Unit
@@ -322,12 +289,10 @@ private fun StitchWindingTrailMap(
             .height(710.dp),
         contentAlignment = Alignment.TopCenter
     ) {
-        // SVG Sendero Sinuoso de Tierra y Piedra
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
 
-            // Sendero M 180 650 C 180 570, 240 520, 190 435 C 140 350, 125 290, 185 200 C 230 130, 160 80, 180 20
             val path = Path().apply {
                 moveTo(w * 0.5f, h * 0.91f)
                 cubicTo(w * 0.5f, h * 0.80f, w * 0.67f, h * 0.73f, w * 0.53f, h * 0.61f)
@@ -335,93 +300,63 @@ private fun StitchWindingTrailMap(
                 cubicTo(w * 0.64f, h * 0.18f, w * 0.44f, h * 0.11f, w * 0.5f, h * 0.03f)
             }
 
-            // 1. Borde de hierba oscura del sendero
-            drawPath(
-                path = path,
-                color = Color(0xFFC2D6BF),
-                style = Stroke(width = 48f)
-            )
-
-            // 2. Tierra firme / Sendero pedregoso
-            drawPath(
-                path = path,
-                color = Color(0xFFD3BD98),
-                style = Stroke(width = 36f)
-            )
-
-            // 3. Huella y piedras centrales del sendero
+            drawPath(path = path, color = Color(0xFFC2D6BF), style = Stroke(width = 48f))
+            drawPath(path = path, color = Color(0xFFD3BD98), style = Stroke(width = 36f))
             drawPath(
                 path = path,
                 color = Color(0xFFBCA075),
-                style = Stroke(
-                    width = 8f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 14f), 0f)
-                )
+                style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 14f), 0f))
             )
         }
 
-        // Texturas de Bosque (Pinos, Arbustos) en los costados
         Text("🌲", fontSize = 48.sp, modifier = Modifier.align(Alignment.TopStart).offset(x = 10.dp, y = 20.dp))
         Text("🌲", fontSize = 54.sp, modifier = Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = 140.dp))
         Text("🌱", fontSize = 40.sp, modifier = Modifier.align(Alignment.BottomStart).offset(x = 10.dp, y = (-120).dp))
         Text("🌿", fontSize = 38.sp, modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-10).dp, y = (-180).dp))
 
-        // ================= ESTACIÓN 5 (Arriba) =================
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = 20.dp)
-        ) {
-            StationNodeButton(
+        // Estación 5 (Arriba)
+        Box(modifier = Modifier.align(Alignment.TopCenter).offset(y = 20.dp)) {
+            StationNodeWithMarker(
                 station = stations[4],
+                isCurrent = currentStation == 5,
+                isPathCompleted = isPathCompleted,
                 onClick = { onStationClick(5) }
             )
         }
 
-        // ================= ESTACIÓN 4 (Derecha) =================
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = (-40).dp, y = 160.dp)
-        ) {
-            StationNodeButton(
+        // Estación 4 (Derecha)
+        Box(modifier = Modifier.align(Alignment.TopEnd).offset(x = (-40).dp, y = 160.dp)) {
+            StationNodeWithMarker(
                 station = stations[3],
+                isCurrent = currentStation == 4,
+                isPathCompleted = isPathCompleted,
                 onClick = { onStationClick(4) }
             )
         }
 
-        // ================= ESTACIÓN 3 (Izquierda) =================
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = 30.dp, y = (-40).dp)
-        ) {
-            StationNodeButton(
+        // Estación 3 (Izquierda)
+        Box(modifier = Modifier.align(Alignment.CenterStart).offset(x = 30.dp, y = (-40).dp)) {
+            StationNodeWithMarker(
                 station = stations[2],
+                isCurrent = currentStation == 3,
+                isPathCompleted = isPathCompleted,
                 onClick = { onStationClick(3) }
             )
         }
 
-        // ================= ESTACIÓN 2 (Centro) =================
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = 80.dp)
-        ) {
-            StationNodeButton(
+        // Estación 2 (Centro)
+        Box(modifier = Modifier.align(Alignment.Center).offset(y = 80.dp)) {
+            StationNodeWithMarker(
                 station = stations[1],
+                isCurrent = currentStation == 2,
+                isPathCompleted = isPathCompleted,
                 onClick = { onStationClick(2) }
             )
         }
 
-        // ================= ESTACIÓN 1 (Abajo - Ubicación Actual) =================
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = (-30).dp)
-        ) {
+        // Estación 1 (Abajo)
+        Box(modifier = Modifier.align(Alignment.BottomCenter).offset(y = (-30).dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Burbuja Mascota Zorro Guía
                 if (showWelcomeBubble) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -451,67 +386,61 @@ private fun StitchWindingTrailMap(
                     Spacer(modifier = Modifier.height(4.dp))
                 }
 
-                // Badge ¡Estás aquí!
-                Box(
-                    modifier = Modifier
-                        .background(CognokinetColors.Forest, CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 3.dp)
-                ) {
-                    Text("📍 ¡Estás aquí!", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Botón Gigante Verde Estación 1
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .shadow(10.dp, RoundedCornerShape(28.dp))
-                        .background(CognokinetColors.LeafGreen, RoundedCornerShape(28.dp))
-                        .border(4.dp, Color(0xFF5D4037), RoundedCornerShape(28.dp))
-                        .clickable { onStationClick(1) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("1", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black)
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Box(
-                    modifier = Modifier
-                        .background(Color.White, CircleShape)
-                        .border(1.dp, Color(0xFFA5D6A7), CircleShape)
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text("1. Salto Vertical", color = Color(0xFF1B5E20), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
+                StationNodeWithMarker(
+                    station = stations[0],
+                    isCurrent = currentStation == 1,
+                    isPathCompleted = isPathCompleted,
+                    onClick = { onStationClick(1) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StationNodeButton(
+private fun StationNodeWithMarker(
     station: StationInfo,
+    isCurrent: Boolean,
+    isPathCompleted: Boolean,
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.clickable { onClick() }
     ) {
+        if (isCurrent && !isPathCompleted) {
+            Box(
+                modifier = Modifier
+                    .background(CognokinetColors.Forest, CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text("📍 ¡Estás aquí!", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        } else if (isPathCompleted && station.id == 5) {
+            Box(
+                modifier = Modifier
+                    .background(CognokinetColors.SunAmber, CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text("🏆 ¡Completado!", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .shadow(4.dp, RoundedCornerShape(16.dp))
+                .size(if (isCurrent) 76.dp else 56.dp)
+                .shadow(6.dp, RoundedCornerShape(20.dp))
                 .background(
                     if (station.isUnlocked) CognokinetColors.LeafGreen else Color(0xFF57606F),
-                    RoundedCornerShape(16.dp)
+                    RoundedCornerShape(20.dp)
                 )
-                .border(2.dp, if (station.isUnlocked) Color(0xFF5D4037) else Color(0xFF474F5C), RoundedCornerShape(16.dp)),
+                .border(3.dp, if (station.isUnlocked) Color(0xFF5D4037) else Color(0xFF474F5C), RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (station.isUnlocked) {
-                Text("${station.id}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("${station.id}", color = Color.White, fontSize = if (isCurrent) 32.sp else 24.sp, fontWeight = FontWeight.Bold)
             } else {
                 Box(
                     modifier = Modifier
@@ -543,60 +472,7 @@ private fun StationNodeButton(
     }
 }
 
-@Composable
-private fun ArCalibrationBottomCard(onCalibrate: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(0.92f)
-            .shadow(4.dp, RoundedCornerShape(16.dp))
-            .background(Color(0xFFFCFBF7), RoundedCornerShape(16.dp))
-            .border(2.dp, Color(0xFFD7C4A5), RoundedCornerShape(16.dp))
-            .padding(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(Color(0xFFEFE8DA), RoundedCornerShape(12.dp))
-                        .border(1.dp, Color(0xFFDECFB5), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🥽", fontSize = 22.sp)
-                }
 
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column {
-                    Text(
-                        text = "Cámara Kinemática AR",
-                        color = Color(0xFF2A1D13),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Calibrar seguimiento corporal",
-                        color = Color(0xFF6D5A4E),
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            Button(
-                onClick = onCalibrate,
-                colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.height(40.dp)
-            ) {
-                Text("Calibrar ⚙️", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
 
 @Composable
 private fun StationModalDialog(
@@ -633,18 +509,18 @@ private fun StationModalDialog(
                 Box(
                     modifier = Modifier
                         .size(60.dp)
-                        .background(Color(0xFFE8F5E9), RoundedCornerShape(20.dp))
-                        .border(2.dp, CognokinetColors.LeafGreen, RoundedCornerShape(20.dp)),
+                        .background(if (station.isUnlocked) Color(0xFFE8F5E9) else Color(0xFFECEFF1), RoundedCornerShape(20.dp))
+                        .border(2.dp, if (station.isUnlocked) CognokinetColors.LeafGreen else Color(0xFF90A4AE), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🥾", fontSize = 30.sp)
+                    Text(if (station.isUnlocked) "🥾" else "🔒", fontSize = 30.sp)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = if (station.isUnlocked) "¡DISPONIBLE!" else "VISTA PREVIA",
-                    color = CognokinetColors.Forest,
+                    text = if (station.isUnlocked) "¡DISPONIBLE!" else "ESTACIÓN BLOQUEADA",
+                    color = if (station.isUnlocked) CognokinetColors.Forest else Color(0xFF78909C),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -662,7 +538,7 @@ private fun StationModalDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = station.description,
+                    text = if (station.isUnlocked) station.description else "Debes completar las estaciones anteriores para desbloquear este reto.",
                     color = Color(0xFF4A5D4E),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center
@@ -670,26 +546,36 @@ private fun StationModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Box(
-                    modifier = Modifier
-                        .background(Color(0xFFEFE8DA), RoundedCornerShape(12.dp))
-                        .border(1.dp, Color(0xFFDECFB5), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    Text("⭐ Meta: ${station.goal}", color = Color(0xFF3A2B1E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (station.isUnlocked) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFEFE8DA), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFDECFB5), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text("⭐ Meta: ${station.goal}", color = Color(0xFF3A2B1E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Button(
                     onClick = onStart,
-                    colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
+                    enabled = station.isUnlocked,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (station.isUnlocked) CognokinetColors.Forest else Color(0xFFB0BEC5)
+                    ),
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
                 ) {
-                    Text("🏃 Ver Demostración y Ejercicio 3D", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (station.isUnlocked) "🏃 Ver Demostración y Ejercicio 3D" else "🔒 Estación Bloqueada",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

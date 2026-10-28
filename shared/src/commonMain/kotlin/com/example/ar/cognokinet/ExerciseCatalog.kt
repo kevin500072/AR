@@ -11,7 +11,8 @@ data class ExerciseItem(
     val timeSeconds: Int,
     val suggestedCriteria: List<String>,
     val baseRewardAcorns: Int,
-    val baseRewardLeaves: Int
+    val baseRewardLeaves: Int,
+    val modelFileName: String
 )
 
 object ExerciseCatalog {
@@ -32,7 +33,8 @@ object ExerciseCatalog {
             timeSeconds = 90,
             suggestedCriteria = listOf("Técnica de impulso", "Amortiguación de caída", "Simetría articular"),
             baseRewardAcorns = 20,
-            baseRewardLeaves = 3
+            baseRewardLeaves = 3,
+            modelFileName = "salto normal.glb"
         ),
         ExerciseItem(
             id = 2,
@@ -50,7 +52,8 @@ object ExerciseCatalog {
             timeSeconds = 90,
             suggestedCriteria = listOf("Ritmo continuo", "Coordinación mano-pie", "Mantener postura"),
             baseRewardAcorns = 30,
-            baseRewardLeaves = 4
+            baseRewardLeaves = 4,
+            modelFileName = "saltar la cuerda.glb"
         ),
         ExerciseItem(
             id = 3,
@@ -68,7 +71,8 @@ object ExerciseCatalog {
             timeSeconds = 120,
             suggestedCriteria = listOf("Puntería y precisión", "Mecánica de brazo", "Control de fuerza"),
             baseRewardAcorns = 30,
-            baseRewardLeaves = 4
+            baseRewardLeaves = 4,
+            modelFileName = "Lanzar.glb"
         ),
         ExerciseItem(
             id = 4,
@@ -86,7 +90,8 @@ object ExerciseCatalog {
             timeSeconds = 120,
             suggestedCriteria = listOf("Pie de apoyo firme", "Contacto del empeine", "Direccionamiento"),
             baseRewardAcorns = 40,
-            baseRewardLeaves = 5
+            baseRewardLeaves = 5,
+            modelFileName = "patear.glb"
         ),
         ExerciseItem(
             id = 5,
@@ -104,7 +109,8 @@ object ExerciseCatalog {
             timeSeconds = 150,
             suggestedCriteria = listOf("Uso de yemas de dedos", "Postura baja", "Alternancia de manos"),
             baseRewardAcorns = 40,
-            baseRewardLeaves = 5
+            baseRewardLeaves = 5,
+            modelFileName = "basquetball.glb"
         )
     )
 

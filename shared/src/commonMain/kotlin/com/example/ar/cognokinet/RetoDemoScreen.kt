@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ar.cognokinet.domain.EvaluationStatus
 
 @Composable
 fun RetoDemoScreen(
@@ -31,9 +31,10 @@ fun RetoDemoScreen(
     var currentStation by remember { mutableStateOf(initialStationId.coerceIn(1, 5)) }
     val activeExercise = ExerciseCatalog.getById(currentStation)
     val activeStudent = appState.activeProfile
+    val activeProgress = appState.activeProgress
 
     val pendingReq = appState.evaluationRequests.firstOrNull {
-        it.studentId == activeStudent?.id && it.exerciseId == currentStation && it.status == "PENDIENTE"
+        it.studentId == activeStudent?.id && it.stationId == currentStation && it.status == EvaluationStatus.PENDING
     }
 
     Box(
@@ -82,19 +83,24 @@ fun RetoDemoScreen(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Selector de Estaciones (Chips)
+                // Selector de Estaciones (Chips) con validación de bloqueo
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     ExerciseCatalog.list.forEach { ex ->
                         val isSel = ex.id == currentStation
+                        val isUnlocked = StationUnlockRules.isUnlocked(ex.id, activeProgress.completedStationIds)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(38.dp)
                                 .background(
-                                    if (isSel) CognokinetColors.Forest else Color(0xFFE8E2D0),
+                                    when {
+                                        isSel -> CognokinetColors.Forest
+                                        isUnlocked -> Color(0xFFE8E2D0)
+                                        else -> Color(0xFFCFD8DC)
+                                    },
                                     RoundedCornerShape(12.dp)
                                 )
                                 .border(
@@ -102,13 +108,19 @@ fun RetoDemoScreen(
                                     if (isSel) CognokinetColors.ForestDark else Color(0xFFD5C29E),
                                     RoundedCornerShape(12.dp)
                                 )
-                                .clickable { currentStation = ex.id },
+                                .clickable {
+                                    if (isUnlocked) {
+                                        currentStation = ex.id
+                                    } else {
+                                        appState.snackbarMessage = "Estación bloqueada. Completa la anterior."
+                                    }
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "E${ex.id}",
+                                text = if (isUnlocked) "E${ex.id}" else "🔒${ex.id}",
                                 color = if (isSel) Color.White else Color(0xFF5C3A21),
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -117,7 +129,7 @@ fun RetoDemoScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // TARJETA DE ILUSTRACIÓN Y DETALLES DEL EJERCICIO 2D
+                // TARJETA DE ILUSTRACIÓN Y DETALLES DEL EJERCICIO
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -127,7 +139,6 @@ fun RetoDemoScreen(
                         .padding(16.dp)
                 ) {
                     Column {
-                        // Ícono de ejercicio y título
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
@@ -160,7 +171,14 @@ fun RetoDemoScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // PASOS NUMERADOS DE EJECUCIÓN
+                        // VISUALIZADOR ANIMADO DE MODELO 3D FBX
+                        FBXModelViewer(
+                            modelFileName = activeExercise.modelFileName,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
                         Text("Pasos de Ejecución:", color = CognokinetColors.Graphite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(6.dp))
                         activeExercise.steps.forEachIndexed { index, step ->
@@ -177,7 +195,6 @@ fun RetoDemoScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // CRITERIOS DE EVALUACIÓN DEL PROFESOR
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -196,8 +213,19 @@ fun RetoDemoScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // BOTÓN DE ACCIÓN: SOLICITAR EVALUACIÓN
-                        if (pendingReq != null) {
+                        val isUnlockedCurrent = StationUnlockRules.isUnlocked(currentStation, activeProgress.completedStationIds)
+
+                        if (!isUnlockedCurrent) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .background(Color(0xFFCFD8DC), RoundedCornerShape(16.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🔒 Estación Bloqueada", color = Color(0xFF37474F), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else if (pendingReq != null) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -220,21 +248,6 @@ fun RetoDemoScreen(
                             ) {
                                 Text("📩 Solicitar Evaluación al Profesor", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // BOTÓN DEBUG SIMULACIÓN
-                        Button(
-                            onClick = {
-                                appState.simulateSessionCompletion(currentStation)
-                                onCompleteSimulatedSession()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.SunAmber),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("⚡ Aprobar Automáticamente (Modo Prueba)", color = Color(0xFF3E2723), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

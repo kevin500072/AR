@@ -1,7 +1,9 @@
 package com.example.ar.cognokinet
 
 import androidx.compose.ui.graphics.Color
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class AvatarConfig(
     val skinColorHex: String = "#FFCC80",
     val faceId: String = "smile",
@@ -14,6 +16,7 @@ data class AvatarConfig(
     val accessoryId: String? = null
 )
 
+@Serializable
 data class ShopItem(
     val id: String,
     val category: String, // "gorra", "camisa", "pantalon", "calzado", "accesorio"

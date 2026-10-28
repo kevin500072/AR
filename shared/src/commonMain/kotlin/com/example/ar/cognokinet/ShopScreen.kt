@@ -123,7 +123,7 @@ fun ShopScreen(
                         if (previewConfig != appState.currentAvatarConfig) {
                             Button(
                                 onClick = {
-                                    appState.currentAvatarConfig = previewConfig
+                                    appState.updateAvatarConfig(previewConfig)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
                                 shape = RoundedCornerShape(12.dp),
@@ -276,7 +276,7 @@ fun ShopScreen(
                                                     "accesorio" -> previewConfig.copy(accessoryId = item.itemId)
                                                     else -> previewConfig
                                                 }
-                                                appState.currentAvatarConfig = previewConfig
+                                                appState.updateAvatarConfig(previewConfig)
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
                                             shape = RoundedCornerShape(10.dp),

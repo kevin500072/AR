@@ -7,5 +7,10 @@ object CognokinetConstants {
     const val INITIAL_LEVEL = 1
     const val INITIAL_XP = 0
     const val TOTAL_STATIONS = 5
-    const val TOTAL_BADGES = 9
+    const val XP_PER_LEVEL = 200
+
+    val TOTAL_BADGES: Int
+        get() = BadgeCatalog.ALL_BADGES.size
+
+    fun levelFor(xp: Int): Int = xp / XP_PER_LEVEL + 1
 }

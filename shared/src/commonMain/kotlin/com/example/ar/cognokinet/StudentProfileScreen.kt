@@ -35,7 +35,7 @@ fun StudentProfileScreen(
     var ageInput by remember { mutableStateOf("8") }
     var gradeInput by remember { mutableStateOf("3º Grado") }
     var selectedAvatarId by remember { mutableStateOf("fox") }
-    var consentChecked by remember { mutableStateOf(true) }
+    var consentChecked by remember { mutableStateOf(false) }
 
     val activeProfile = appState.activeProfile
     val activeProgress = appState.activeProgress
@@ -228,8 +228,10 @@ fun StudentProfileScreen(
                             // Botón Guardar
                             Button(
                                 onClick = {
-                                    if (nameInput.isBlank()) {
+                                    val age = ageInput.toIntOrNull() ?: 8
+                                    if (nameInput.isBlank() || age !in 3..18 || !consentChecked) {
                                         showValidationError = true
+                                        appState.snackbarMessage = "Nombre requerido, edad entre 3 y 18, y consentimiento obligatorio."
                                     } else {
                                         showValidationError = false
                                         val age = ageInput.toIntOrNull() ?: 8
@@ -239,7 +241,7 @@ fun StudentProfileScreen(
                                             if (existing != null) {
                                                 appState.updateStudentProfile(
                                                     existing.copy(
-                                                        name = nameInput,
+                                                        displayName = nameInput,
                                                         age = age,
                                                         grade = gradeInput,
                                                         avatarId = selectedAvatarId,

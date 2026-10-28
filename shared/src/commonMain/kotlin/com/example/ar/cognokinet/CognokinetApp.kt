@@ -13,6 +13,12 @@ import androidx.compose.ui.unit.dp
 fun CognokinetApp(
     appState: CognokinetAppState = remember { CognokinetAppState() }
 ) {
+    // Control de música: sólo se reproduce cuando el alumno ya registró su perfil
+    ForestAudioPlayerController(
+        isMusicEnabled = appState.isMusicEnabled,
+        isMusicPlaying = appState.isMusicPlaying && appState.activeProfile != null
+    )
+
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -65,6 +71,7 @@ fun CognokinetApp(
                         }
                         CognokinetScreen.RESULTS -> {
                             ResultsScreen(
+                                appState = appState,
                                 onContinueToMap = { appState.navigateTo(CognokinetScreen.MAP) },
                                 onBack = { appState.navigateTo(CognokinetScreen.MAP) }
                             )

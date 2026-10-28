@@ -3,6 +3,7 @@ package com.example.ar.cognokinet
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,25 +17,59 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ar.cognokinet.domain.Classroom
+import com.example.ar.cognokinet.domain.DecisionStatus
+import com.example.ar.cognokinet.domain.EvaluationRequest
+import com.example.ar.cognokinet.domain.EvaluationStatus
+import com.example.ar.cognokinet.domain.IdGenerator
 
 @Composable
 fun TeacherScreen(
     appState: CognokinetAppState,
     onBack: () -> Unit
 ) {
-    var pinInput by remember { mutableStateOf("") }
-    var isAuthenticated by remember { mutableStateOf(false) }
-    var selectedTeacherTab by remember { mutableStateOf("evaluaciones") } // "clases", "evaluaciones", "alumnos"
+    var isAuthenticated by remember { mutableStateOf(appState.isTeacherPinSet) }
+    var emailInput by remember { mutableStateOf("prof.ana@escuela.edu") }
+    var passwordInput by remember { mutableStateOf("123456") }
+
+    var selectedTab by remember { mutableStateOf("clases") }
+
+    var classrooms by remember {
+        mutableStateOf(
+            listOf(
+                Classroom(
+                    id = "class_1",
+                    name = "Educación Física 4º A",
+                    grade = "4º",
+                    group = "A",
+                    schoolYear = "2024-2025",
+                    teacherId = "teacher_1",
+                    teacherName = appState.teacherName,
+                    joinCode = "EF4A24",
+                    joinOpen = true
+                )
+            )
+        )
+    }
+    var activeClassroom by remember { mutableStateOf<Classroom?>(classrooms.firstOrNull()) }
+
+    var showCreateClassDialog by remember { mutableStateOf(false) }
+    var newClassName by remember { mutableStateOf("") }
+    var newClassGrade by remember { mutableStateOf("4º") }
+    var newClassGroup by remember { mutableStateOf("A") }
+    var newClassYear by remember { mutableStateOf("2024-2025") }
 
     var selectedRequestToEvaluate by remember { mutableStateOf<EvaluationRequest?>(null) }
-    var starsInput by remember { mutableStateOf(3) }
-    var bonusAcornsInput by remember { mutableStateOf(10) }
-    var bonusLeavesInput by remember { mutableStateOf(2) }
-    var commentInput by remember { mutableStateOf("¡Excelente ejecución de técnica!") }
+    var evalDecision by remember { mutableStateOf(DecisionStatus.PASS) }
+    var evalStars by remember { mutableStateOf(3) }
+    var evalBonusAcorns by remember { mutableStateOf(10) }
+    var evalBonusLeaves by remember { mutableStateOf(2) }
+    var evalComment by remember { mutableStateOf("¡Excelente técnica!") }
 
-    val pendingRequests = appState.evaluationRequests.filter { it.status == "PENDIENTE" }
+    val pendingRequests = appState.evaluationRequests.filter { it.status == EvaluationStatus.PENDING }
 
     Box(
         modifier = Modifier
@@ -42,12 +77,13 @@ fun TeacherScreen(
             .background(CognokinetColors.SurfaceGreen)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Bar
+            // Header Bar with Status Bar Padding to prevent clock overlap
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -57,292 +93,509 @@ fun TeacherScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(42.dp)
                                 .background(CognokinetColors.ForestLight, CircleShape)
+                                .border(1.dp, CognokinetColors.Forest.copy(alpha = 0.3f), CircleShape)
                                 .clickable { onBack() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("←", color = CognokinetColors.Forest, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("←", color = CognokinetColors.Forest, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
 
-                        Text("Panel del Profesor / Evaluador", color = CognokinetColors.Graphite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Panel de la Profesora",
+                            color = CognokinetColors.Graphite,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
 
-                    Text("🎓", fontSize = 20.sp)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFFFFF8E1), CircleShape)
+                            .border(1.dp, Color(0xFFFFD54F), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🎓", fontSize = 20.sp)
+                    }
                 }
             }
 
             if (!isAuthenticated) {
-                // AUTENTICACIÓN DE PIN DEL PROFESOR
-                Box(
+                // LOGIN FORM FOR TEACHER
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Box(
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = CognokinetColors.Parchment),
                         modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .shadow(8.dp, RoundedCornerShape(24.dp))
-                            .background(CognokinetColors.Parchment, RoundedCornerShape(24.dp))
-                            .border(2.dp, CognokinetColors.EarthWood, RoundedCornerShape(24.dp))
-                            .padding(20.dp)
+                            .fillMaxWidth()
+                            .shadow(8.dp, RoundedCornerShape(20.dp))
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🔐 Acceso Protegido de Profesor", color = CognokinetColors.Graphite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text("Ingresa el PIN de seguridad (Default: 1234):", color = Color(0xFF5C3A21), fontSize = 12.sp, textAlign = TextAlign.Center)
-
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                "Iniciar Sesión - Profesora",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CognokinetColors.Graphite
+                            )
                             Spacer(modifier = Modifier.height(14.dp))
 
                             OutlinedTextField(
-                                value = pinInput,
-                                onValueChange = { pinInput = it },
-                                placeholder = { Text("PIN de 4 dígitos") },
+                                value = emailInput,
+                                onValueChange = { emailInput = it },
+                                label = { Text("Correo institucional") },
                                 singleLine = true,
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.fillMaxWidth(0.7f)
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             )
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            OutlinedTextField(
+                                value = passwordInput,
+                                onValueChange = { passwordInput = it },
+                                label = { Text("Contraseña") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
 
                             Button(
                                 onClick = {
-                                    if (pinInput == appState.teacherPin || pinInput == "1234") {
+                                    if (emailInput.isNotBlank() && passwordInput.length >= 6) {
+                                        appState.setTeacherProfile(
+                                            appState.teacherName,
+                                            appState.teacherGrade,
+                                            appState.teacherSubject,
+                                            passwordInput
+                                        )
                                         isAuthenticated = true
+                                    } else {
+                                        appState.snackbarMessage = "Ingresa correo y contraseña válida (mínimo 6 caracteres)"
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier
-                                    .fillMaxWidth(0.7f)
-                                    .height(48.dp)
+                                    .fillMaxWidth()
+                                    .height(50.dp)
                             ) {
-                                Text("Ingresar al Dashboard", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("Entrar al Panel", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
             } else {
-                // PANELES DE GESTIÓN DEL PROFESOR
+                // DASHBOARD VIEW
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Pestañas del Profesor
+                    // SCROLLABLE HORIZONTAL TABS (Prevents text wrapping and layout breaking)
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        listOf(
-                            "evaluaciones" to "📝 Evaluaciones (${pendingRequests.size})",
-                            "clases" to "🏫 Mis Clases",
-                            "alumnos" to "👥 Alumnos"
-                        ).forEach { (key, label) ->
-                            val isSel = selectedTeacherTab == key
+                        val tabsList = listOf(
+                            "clases" to "🏫 Clases",
+                            "alumnos" to "👥 Alumnos",
+                            "progreso" to "📊 Progreso",
+                            "evaluaciones" to "📩 Evaluaciones (${pendingRequests.size})",
+                            "rubricas" to "📝 Rúbricas"
+                        )
+
+                        tabsList.forEach { (key, label) ->
+                            val isSel = selectedTab == key
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(40.dp)
                                     .background(
-                                        if (isSel) CognokinetColors.Forest else Color(0xFFE8E2D0),
-                                        RoundedCornerShape(12.dp)
+                                        if (isSel) CognokinetColors.Forest else Color(0xFFF0F4F1),
+                                        RoundedCornerShape(20.dp)
                                     )
-                                    .clickable { selectedTeacherTab = key },
-                                contentAlignment = Alignment.Center
+                                    .border(
+                                        1.dp,
+                                        if (isSel) CognokinetColors.ForestDark else Color(0xFFE0E0E0),
+                                        RoundedCornerShape(20.dp)
+                                    )
+                                    .clickable { selectedTab = key }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp)
                             ) {
                                 Text(
                                     text = label,
-                                    color = if (isSel) Color.White else Color(0xFF5C3A21),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSel) Color.White else Color(0xFF424242),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Color(0xFFE0E0E0), thickness = 1.dp)
 
-                    if (selectedTeacherTab == "evaluaciones") {
-                        // COLA DE EVALUACIONES PENDIENTES
-                        Text("Cola de Solicitudes de Evaluación", color = CognokinetColors.Graphite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        if (pendingRequests.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.White, RoundedCornerShape(16.dp))
-                                    .padding(20.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("✓ No hay evaluaciones pendientes en este momento.", color = Color(0xFF5C6E5A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                pendingRequests.forEach { req ->
-                                    val exercise = ExerciseCatalog.getById(req.exerciseId)
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .shadow(3.dp, RoundedCornerShape(16.dp))
-                                            .background(Color.White, RoundedCornerShape(16.dp))
-                                            .border(1.dp, Color(0xFFE8E1D3), RoundedCornerShape(16.dp))
-                                            .padding(12.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Column {
-                                                Text(req.studentName, color = CognokinetColors.Graphite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                                Text("Ejercicio: ${exercise.name}", color = CognokinetColors.Forest, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                Text("Meta: ${exercise.targetGoal}", color = Color(0xFF5D4037), fontSize = 11.sp)
-                                            }
-
-                                            Button(
-                                                onClick = { selectedRequestToEvaluate = req },
-                                                colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
-                                                shape = RoundedCornerShape(10.dp)
-                                            ) {
-                                                Text("Evaluar", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else if (selectedTeacherTab == "clases") {
-                        // VISTA DE CLASES
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .shadow(4.dp, RoundedCornerShape(20.dp))
-                                .background(Color.White, RoundedCornerShape(20.dp))
-                                .padding(16.dp)
-                        ) {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text("Clase: 3º A de Primaria", color = CognokinetColors.Graphite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                        Text("Código de Clase: ABC123", color = CognokinetColors.Forest, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .background(Color(0xFFE8F5E9), CircleShape)
-                                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                                    ) {
-                                        Text("${appState.studentProfiles.size} Alumnos", color = CognokinetColors.ForestDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
+                    // CONTENT BODY FOR SELECTED TAB
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        when (selectedTab) {
+                            "clases" -> {
+                                // Clear white plus icon on dark green button
                                 Button(
-                                    onClick = { },
+                                    onClick = { showCreateClassDialog = true },
                                     colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
-                                    shape = RoundedCornerShape(14.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("➕ Crear Nueva Clase", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    } else {
-                        // VISTA DE ROSTER DE ALUMNOS
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            appState.studentProfiles.forEach { student ->
-                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .shadow(3.dp, RoundedCornerShape(16.dp))
-                                        .background(Color.White, RoundedCornerShape(16.dp))
-                                        .border(1.dp, Color(0xFFE8E1D3), RoundedCornerShape(16.dp))
-                                        .padding(12.dp)
+                                        .height(52.dp),
+                                    shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(StudentAvatars.getEmoji(student.avatarId), fontSize = 28.sp)
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Text(student.name, color = CognokinetColors.Graphite, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                            Text("${student.age} años · ${student.grade}", color = Color(0xFF5C3A21), fontSize = 11.sp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .background(Color.White.copy(alpha = 0.25f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("+", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                         }
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(
+                                            "Crear Clase de Educación Física",
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                classrooms.forEach { cls ->
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = CognokinetColors.Parchment),
+                                        shape = RoundedCornerShape(18.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 6.dp)
+                                            .shadow(4.dp, RoundedCornerShape(18.dp))
+                                            .clickable { activeClassroom = cls }
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Text(
+                                                cls.name,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CognokinetColors.Graphite
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                "${cls.grade} ${cls.group} · Ciclo ${cls.schoolYear}",
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF5C3A21)
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    "Código de ingreso: ${cls.joinCode}",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = CognokinetColors.Forest
+                                                )
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            if (cls.joinOpen) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                                                            CircleShape
+                                                        )
+                                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                                ) {
+                                                    Text(
+                                                        if (cls.joinOpen) "🟢 Registro Abierto" else "🔴 Registro Cerrado",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (cls.joinOpen) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            "evaluaciones" -> {
+                                Text(
+                                    "Cola de Evaluaciones Pendientes:",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CognokinetColors.Graphite
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                if (pendingRequests.isEmpty()) {
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                                        shape = RoundedCornerShape(16.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(20.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text("🎉", fontSize = 36.sp)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                "¡Al día! No hay solicitudes pendientes por evaluar.",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CognokinetColors.Graphite,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    pendingRequests.forEach { req ->
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                                            shape = RoundedCornerShape(14.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(14.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column {
+                                                    Text(req.studentName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                                    Text(
+                                                        "Estación ${req.stationId}: ${ExerciseCatalog.getById(req.stationId).name}",
+                                                        fontSize = 12.sp,
+                                                        color = CognokinetColors.Forest,
+                                                        fontWeight = FontWeight.Medium
+                                                    )
+                                                }
+
+                                                Button(
+                                                    onClick = { selectedRequestToEvaluate = req },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                ) {
+                                                    Text("Evaluar ➔", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            "rubricas" -> {
+                                RubricEditorScreen(
+                                    classId = activeClassroom?.id ?: "class_1",
+                                    stationId = 1,
+                                    onSaveRubric = { appState.snackbarMessage = "Rúbrica guardada exitosamente" },
+                                    onResetToDefault = { appState.snackbarMessage = "Rúbrica restablecida" },
+                                    onBack = { selectedTab = "clases" }
+                                )
+                            }
+
+                            else -> {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            "Lista de alumnos y progreso de la clase",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CognokinetColors.Graphite
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "Selecciona un alumno para revisar su expediente individual, avances en las estaciones e insignias ganadas.",
+                                            fontSize = 13.sp,
+                                            color = Color(0xFF616161)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(20.dp))
                 }
             }
         }
 
-        // DIÁLOGO DE CALIFICACIÓN DE EVALUACIÓN
+        // CREATE CLASS DIALOG
+        if (showCreateClassDialog) {
+            AlertDialog(
+                onDismissRequest = { showCreateClassDialog = false },
+                title = { Text("Crear Nueva Clase de EF") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = newClassName,
+                            onValueChange = { newClassName = it },
+                            label = { Text("Nombre de la Clase") },
+                            placeholder = { Text("ej. Educación Física 4º B") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = newClassGrade,
+                                onValueChange = { newClassGrade = it },
+                                label = { Text("Grado") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            OutlinedTextField(
+                                value = newClassGroup,
+                                onValueChange = { newClassGroup = it },
+                                label = { Text("Grupo") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (newClassName.isNotBlank()) {
+                                val code = "EF" + (100..999).random()
+                                val newCls = Classroom(
+                                    id = IdGenerator.newId(),
+                                    name = newClassName,
+                                    grade = newClassGrade,
+                                    group = newClassGroup,
+                                    schoolYear = newClassYear,
+                                    teacherId = "teacher_1",
+                                    teacherName = appState.teacherName,
+                                    joinCode = code,
+                                    joinOpen = true
+                                )
+                                classrooms = classrooms + newCls
+                                activeClassroom = newCls
+                                showCreateClassDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Crear Clase", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreateClassDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
+        // EVALUATION DIALOG
         if (selectedRequestToEvaluate != null) {
             val req = selectedRequestToEvaluate!!
-            val exercise = ExerciseCatalog.getById(req.exerciseId)
-
             AlertDialog(
                 onDismissRequest = { selectedRequestToEvaluate = null },
-                title = { Text("Evaluar a ${req.studentName}") },
+                title = { Text("Evaluar a ${req.studentName} - Estación ${req.stationId}") },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Ejercicio: ${exercise.name}", fontWeight = FontWeight.Bold, color = CognokinetColors.Forest)
+                    Column {
+                        Text("Decisión de Evaluación:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = evalDecision == DecisionStatus.PASS,
+                                onClick = { evalDecision = DecisionStatus.PASS },
+                                label = { Text("PASA a siguiente") }
+                            )
+                            FilterChip(
+                                selected = evalDecision == DecisionStatus.REPEAT,
+                                onClick = { evalDecision = DecisionStatus.REPEAT },
+                                label = { Text("Debe REPETIR") }
+                            )
+                        }
 
-                        Text("Calificación de Estrellas (1 - 3):", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text("Estrellas Otorgadas (1 a 3):", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             (1..3).forEach { st ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .background(
-                                            if (st <= starsInput) CognokinetColors.SunAmber else Color(0xFFE0E0E0),
-                                            CircleShape
-                                        )
-                                        .clickable { starsInput = st },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("★", color = Color.White, fontSize = 18.sp)
-                                }
+                                FilterChip(
+                                    selected = evalStars == st,
+                                    onClick = { evalStars = st },
+                                    label = { Text("$st ★") }
+                                )
                             }
                         }
 
-                        Text("Comentario para el Alumno:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(10.dp))
+
                         OutlinedTextField(
-                            value = commentInput,
-                            onValueChange = { commentInput = it },
-                            modifier = Modifier.fillMaxWidth()
+                            value = evalComment,
+                            onValueChange = { evalComment = it },
+                            label = { Text("Comentario (Obligatorio si repite)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
                         )
                     }
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            appState.teacherApproveEvaluation(
-                                requestId = req.id,
-                                stars = starsInput,
-                                bonusAcorns = bonusAcornsInput,
-                                bonusLeaves = bonusLeavesInput,
-                                comment = commentInput
-                            )
-                            selectedRequestToEvaluate = null
+                            if (evalDecision == DecisionStatus.REPEAT && evalComment.isBlank()) {
+                                appState.snackbarMessage = "El comentario es obligatorio para repetir la estación"
+                            } else {
+                                appState.teacherApproveEvaluation(
+                                    requestId = req.id,
+                                    stars = evalStars,
+                                    bonusAcorns = evalBonusAcorns,
+                                    bonusLeaves = evalBonusLeaves,
+                                    comment = evalComment,
+                                    decision = evalDecision
+                                )
+                                selectedRequestToEvaluate = null
+                            }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest)
+                        colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Aprobar Nivel", color = Color.White)
+                        Text("Guardar Evaluación", color = Color.White)
                     }
                 },
                 dismissButton = {

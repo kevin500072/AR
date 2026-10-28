@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 kotlin {
@@ -43,6 +44,9 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
+            api("io.github.sceneview:sceneview:4.62.0")
+            api("io.github.sceneview:arsceneview:4.62.0")
+            implementation(libs.androidx.activity.compose)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
         }
@@ -55,6 +59,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
