@@ -44,8 +44,8 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
-            api("io.github.sceneview:sceneview:4.62.0")
-            api("io.github.sceneview:arsceneview:4.62.0")
+            api(libs.sceneview)
+            api(libs.arsceneview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)

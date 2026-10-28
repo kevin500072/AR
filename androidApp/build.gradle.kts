@@ -15,9 +15,6 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
 
-    implementation("io.github.sceneview:sceneview:4.62.0")
-    implementation("io.github.sceneview:arsceneview:4.62.0")
-
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 }
