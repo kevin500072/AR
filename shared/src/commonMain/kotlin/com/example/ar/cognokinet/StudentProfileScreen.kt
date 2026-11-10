@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun StudentProfileScreen(
     appState: CognokinetAppState,
+    sessionStore: OnlineSessionStore,
     onBackToHome: () -> Unit,
     onGoToMap: () -> Unit
 ) {
@@ -36,6 +38,10 @@ fun StudentProfileScreen(
     var gradeInput by remember { mutableStateOf("3º Grado") }
     var selectedAvatarId by remember { mutableStateOf("fox") }
     var consentChecked by remember { mutableStateOf(false) }
+    var joinCodeInput by remember { mutableStateOf("") }
+    var returningOnlineStudent by remember { mutableStateOf(false) }
+    var isCreatingOnlineAccount by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val activeProfile = appState.activeProfile
     val activeProgress = appState.activeProgress
@@ -74,7 +80,21 @@ fun StudentProfileScreen(
                         Text("Perfil del Alumno / Explorador", color = CognokinetColors.Graphite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Text("👤", fontSize = 20.sp)
+                    if (appState.onlineRole == "STUDENT") {
+                        TextButton(onClick = {
+                            val refreshToken = appState.onlineRefreshToken
+                            sessionStore.clear()
+                            appState.signOutOnlineAccount()
+                            if (refreshToken != null) scope.launch {
+                                runCatching { OnlineClassApi.logout(refreshToken) }
+                            }
+                            onBackToHome()
+                        }) {
+                            Text("Cerrar sesión", color = CognokinetColors.Forest, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text("👤", fontSize = 20.sp)
+                    }
                 }
             }
 
@@ -129,147 +149,203 @@ fun StudentProfileScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
 
-                            // Nombre / Apodo
-                            Text("Nombre o Apodo del Alumno (*):", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedTextField(
-                                value = nameInput,
-                                onValueChange = {
-                                    nameInput = it
-                                    if (it.isNotBlank()) showValidationError = false
-                                },
-                                placeholder = { Text("ej. Lucas, Sofía, Mateo...") },
-                                isError = showValidationError && nameInput.isBlank(),
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                singleLine = true
-                            )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Edad y Grado Row
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("Edad:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    OutlinedTextField(
-                                        value = ageInput,
-                                        onValueChange = { ageInput = it },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(14.dp),
-                                        singleLine = true
+                            if (editingProfileId == null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(
+                                        checked = returningOnlineStudent,
+                                        onCheckedChange = { returningOnlineStudent = it }
                                     )
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("Grado Escolar:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    OutlinedTextField(
-                                        value = gradeInput,
-                                        onValueChange = { gradeInput = it },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(14.dp),
-                                        singleLine = true
-                                    )
+                                    Text("Ya tengo una cuenta de alumno")
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            if (editingProfileId != null || !returningOnlineStudent) {
+                                // Nombre / Apodo
+                                Text("Nombre o Apodo del Alumno (*):", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                OutlinedTextField(
+                                    value = nameInput,
+                                    onValueChange = {
+                                        nameInput = it
+                                        if (it.isNotBlank()) showValidationError = false
+                                    },
+                                    placeholder = { Text("ej. Lucas, Sofía, Mateo...") },
+                                    isError = showValidationError && nameInput.isBlank(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    singleLine = true
+                                )
 
-                            // Avatar Ilustrado
-                            Text("Elige un Avatar Ilustrado:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceAround
-                            ) {
-                                StudentAvatars.list.forEach { avatar ->
-                                    val isSel = avatar.id == selectedAvatarId
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .background(
-                                                if (isSel) CognokinetColors.Forest else Color.White,
-                                                CircleShape
-                                            )
-                                            .border(
-                                                2.dp,
-                                                if (isSel) CognokinetColors.ForestDark else Color(0xFFDCD5C5),
-                                                CircleShape
-                                            )
-                                            .clickable { selectedAvatarId = avatar.id },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(avatar.emoji, fontSize = 22.sp)
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Edad:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        OutlinedTextField(
+                                            value = ageInput,
+                                            onValueChange = { ageInput = it.filter(Char::isDigit).take(2) },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(14.dp),
+                                            singleLine = true
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Grado Escolar:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        OutlinedTextField(
+                                            value = gradeInput,
+                                            onValueChange = { gradeInput = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(14.dp),
+                                            singleLine = true
+                                        )
                                     }
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                                if (editingProfileId == null) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    OutlinedTextField(
+                                        value = joinCodeInput,
+                                        onValueChange = { joinCodeInput = it.uppercase().take(6) },
+                                        label = { Text("Código de clase (6 caracteres)") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                    )
+                                }
 
-                            // Consentimiento Tutor
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { consentChecked = !consentChecked }
-                            ) {
-                                Checkbox(
-                                    checked = consentChecked,
-                                    onCheckedChange = { consentChecked = it }
-                                )
-                                Text(
-                                    text = "Declaro contar con la autorización del padre/tutor para la evaluación motriz.",
-                                    color = Color(0xFF4B5E50),
-                                    fontSize = 11.sp
-                                )
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text("Elige un Avatar Ilustrado:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                                    StudentAvatars.list.forEach { avatar ->
+                                        val isSel = avatar.id == selectedAvatarId
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .background(if (isSel) CognokinetColors.Forest else Color.White, CircleShape)
+                                                .border(2.dp, if (isSel) CognokinetColors.ForestDark else Color(0xFFDCD5C5), CircleShape)
+                                                .clickable { selectedAvatarId = avatar.id },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(avatar.emoji, fontSize = 22.sp)
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { consentChecked = !consentChecked }
+                                ) {
+                                    Checkbox(checked = consentChecked, onCheckedChange = { consentChecked = it })
+                                    Text(
+                                        text = "Declaro contar con la autorización del padre/tutor para la evaluación motriz.",
+                                        color = Color(0xFF4B5E50),
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            } else {
+                                Text("Google recuperará el perfil y progreso de la cuenta seleccionada.")
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Botón Guardar
-                            Button(
-                                onClick = {
-                                    val age = ageInput.toIntOrNull() ?: 8
-                                    if (nameInput.isBlank() || age !in 3..18 || !consentChecked) {
-                                        showValidationError = true
-                                        appState.snackbarMessage = "Nombre requerido, edad entre 3 y 18, y consentimiento obligatorio."
-                                    } else {
-                                        showValidationError = false
-                                        val age = ageInput.toIntOrNull() ?: 8
-                                        val editingId = editingProfileId
-                                        if (editingId != null) {
-                                            val existing = appState.studentProfiles.firstOrNull { it.id == editingId }
-                                            if (existing != null) {
-                                                appState.updateStudentProfile(
-                                                    existing.copy(
-                                                        displayName = nameInput,
-                                                        age = age,
-                                                        grade = gradeInput,
-                                                        avatarId = selectedAvatarId,
-                                                        consentGiven = consentChecked
+                            if (editingProfileId == null) {
+                                GoogleSignInButton(
+                                    onIdToken = { idToken ->
+                                        val age = ageInput.toIntOrNull() ?: 0
+                                        if (!returningOnlineStudent &&
+                                            (nameInput.isBlank() || age !in 3..18 || gradeInput.isBlank() ||
+                                                joinCodeInput.length != 6 || !consentChecked)
+                                        ) {
+                                            showValidationError = true
+                                            appState.snackbarMessage =
+                                                "Completa nombre, edad, grado, código de clase y autorización del tutor."
+                                        } else {
+                                            showValidationError = false
+                                            isCreatingOnlineAccount = true
+                                            scope.launch {
+                                                try {
+                                                    val result = OnlineClassApi.signInWithGoogle(
+                                                        OnlineGoogleLoginRequest(
+                                                            idToken = idToken,
+                                                            role = "STUDENT",
+                                                            joinCode = if (returningOnlineStudent) "" else joinCodeInput,
+                                                            displayName = if (returningOnlineStudent) "" else nameInput,
+                                                            age = if (returningOnlineStudent) 0 else age,
+                                                            grade = if (returningOnlineStudent) "" else gradeInput,
+                                                            avatarId = selectedAvatarId,
+                                                            consentGiven = consentChecked
+                                                        )
                                                     )
-                                                )
+                                                    appState.onlineAuthToken = result.token
+                                                    appState.onlineRefreshToken = result.refreshToken
+                                                    appState.onlineProgressReady = result.role == "STUDENT"
+                                                    sessionStore.save(OnlineClassApi.encodeSession(result))
+                                                    appState.onlineUserId = result.userId
+                                                    appState.onlineRole = result.role
+                                                    appState.onlineClassId = result.classId
+                                                    appState.activeRole = result.role
+                                                    val profile = com.example.ar.cognokinet.domain.StudentProfile(
+                                                        id = result.userId,
+                                                        displayName = result.displayName.ifBlank { nameInput },
+                                                        age = result.age.takeIf { it > 0 } ?: age,
+                                                        grade = result.grade.ifBlank { gradeInput },
+                                                        avatarId = result.avatarId.ifBlank { selectedAvatarId },
+                                                        consentGiven = result.consentGiven || consentChecked
+                                                    )
+                                                    val index = appState.studentProfiles.indexOfFirst { it.id == result.userId }
+                                                    if (index >= 0) appState.studentProfiles[index] = profile
+                                                    else appState.studentProfiles.add(profile)
+                                                    appState.progressMap[result.userId] = result.progress
+                                                        ?: com.example.ar.cognokinet.domain.StudentProgress.inicial(result.userId)
+                                                    appState.activeProfileId = result.userId
+                                                    isCreatingNew = false
+                                                    onGoToMap()
+                                                } catch (error: Exception) {
+                                                    appState.snackbarMessage =
+                                                        error.message ?: "No se pudo completar el acceso con Google."
+                                                } finally {
+                                                    isCreatingOnlineAccount = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onError = { appState.snackbarMessage = it },
+                                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                                )
+                                if (isCreatingOnlineAccount) {
+                                    Text("Creando o recuperando tu cuenta con Google…")
+                                }
+                            } else {
+                                Button(
+                                    onClick = {
+                                        val age = ageInput.toIntOrNull() ?: 8
+                                        if (nameInput.isBlank() || age !in 3..18 || !consentChecked) {
+                                            showValidationError = true
+                                            appState.snackbarMessage = "Nombre requerido, edad entre 3 y 18, y consentimiento obligatorio."
+                                        } else {
+                                            val existing = appState.studentProfiles.firstOrNull { it.id == editingProfileId }
+                                            if (existing != null) {
+                                                appState.updateStudentProfile(existing.copy(
+                                                    displayName = nameInput,
+                                                    age = age,
+                                                    grade = gradeInput,
+                                                    avatarId = selectedAvatarId,
+                                                    consentGiven = consentChecked
+                                                ))
                                             }
                                             editingProfileId = null
-                                        } else {
-                                            appState.createStudentProfile(
-                                                name = nameInput,
-                                                age = age,
-                                                grade = gradeInput,
-                                                avatarId = selectedAvatarId,
-                                                consentGiven = consentChecked
-                                            )
+                                            isCreatingNew = false
+                                            onGoToMap()
                                         }
-                                        isCreatingNew = false
-                                        onGoToMap()
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                            ) {
-                                Text("✓ Guardar Perfil de Explorador", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                                ) {
+                                    Text("Guardar cambios", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
 
                             if (appState.studentProfiles.isNotEmpty()) {
@@ -448,6 +524,25 @@ fun StudentProfileScreen(
                     }
                 }
             )
+        }
+
+        appState.snackbarMessage?.let { message ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { appState.snackbarMessage = null }) {
+                            Text("OK", color = Color.White)
+                        }
+                    }
+                ) {
+                    Text(message, color = Color.White)
+                }
+            }
         }
     }
 }

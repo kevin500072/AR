@@ -60,7 +60,7 @@ fun MapScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFE4EFE3))
+            .background(Color(0xFF76C361))
     ) {
         Column(
             modifier = Modifier
@@ -94,8 +94,6 @@ fun MapScreen(
                     }
                 )
 
-
-
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
@@ -125,7 +123,8 @@ private fun MapHeaderBar(appState: CognokinetAppState, onOpenProfile: () -> Unit
         modifier = Modifier
             .fillMaxWidth()
             .shadow(2.dp)
-            .background(Color(0xFFF8FAF6).copy(alpha = 0.9f))
+            .background(Color(0xFF62B04E).copy(alpha = 0.95f))
+            .statusBarsPadding()
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
@@ -137,9 +136,9 @@ private fun MapHeaderBar(appState: CognokinetAppState, onOpenProfile: () -> Unit
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                HeaderPill(icon = "🍃", text = "${progress.leaves}", badge = null, color = Color(0xFF1D321F))
-                HeaderPill(icon = "🌰", text = "${progress.acorns}", badge = null, color = Color(0xFF5D4037))
-                HeaderPill(icon = "🧭", text = "Niv. ${progress.level} Explorador", badge = null, color = Color(0xFF4E342E))
+                HeaderPill(icon = "🍃", text = "${progress.leaves}", color = Color(0xFF1D321F))
+                HeaderPill(icon = "🌰", text = "${progress.acorns}", color = Color(0xFF5D4037))
+                HeaderPill(icon = "🧭", text = "Niv. ${progress.level} Explorador", color = Color(0xFF4E342E))
             }
 
             Box(
@@ -147,7 +146,7 @@ private fun MapHeaderBar(appState: CognokinetAppState, onOpenProfile: () -> Unit
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFD7E8D3))
-                    .border(2.dp, CognokinetColors.Forest, CircleShape)
+                    .border(2.dp, Color(0xFF3F6D31), CircleShape)
                     .clickable { onOpenProfile() },
                 contentAlignment = Alignment.Center
             ) {
@@ -161,12 +160,12 @@ private fun MapHeaderBar(appState: CognokinetAppState, onOpenProfile: () -> Unit
 }
 
 @Composable
-private fun HeaderPill(icon: String, text: String, badge: String?, color: Color) {
+private fun HeaderPill(icon: String, text: String, color: Color) {
     Box(
         modifier = Modifier
             .height(36.dp)
             .background(Color.White, CircleShape)
-            .border(1.dp, Color(0xFFC2E0B8), CircleShape)
+            .border(1.dp, Color(0xFFB5E0A8), CircleShape)
             .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -174,17 +173,6 @@ private fun HeaderPill(icon: String, text: String, badge: String?, color: Color)
             Text(icon, fontSize = 14.sp)
             Spacer(modifier = Modifier.width(4.dp))
             Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            if (badge != null) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .background(Color(0xFFE8F5E9), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(badge, color = CognokinetColors.Forest, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                }
-            }
         }
     }
 }
@@ -203,9 +191,9 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(16.dp))
-                .background(Color(0xFFEADBC0).copy(alpha = 0.95f), RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0xFFD5C29E), RoundedCornerShape(16.dp))
+                .shadow(4.dp, RoundedCornerShape(16.dp))
+                .background(Color(0xFFE8D3A3).copy(alpha = 0.95f), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFFC7A26E), RoundedCornerShape(16.dp))
                 .padding(14.dp)
         ) {
             Column {
@@ -218,7 +206,7 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(CognokinetColors.Forest, RoundedCornerShape(12.dp)),
+                                .background(Color(0xFF6CC551), RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text("🏋️", fontSize = 18.sp)
@@ -235,7 +223,7 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
                             )
                             Text(
                                 text = if (progress.isPathCompleted) "¡Sendero completado!" else "${progress.completedStationsCount} de $totalStations Estaciones",
-                                color = Color(0xFF6D5A4E),
+                                color = Color(0xFF5C473B),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -244,7 +232,7 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
 
                     Box(
                         modifier = Modifier
-                            .background(Color(0xFF57606F), CircleShape)
+                            .background(Color(0xFF4C4B5E), CircleShape)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text("$percentInt%", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -259,13 +247,13 @@ private fun CoordinationProgressCard(progress: StudentProgress) {
                         .height(12.dp)
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.8f))
-                        .border(1.dp, Color(0xFFDAC49E), CircleShape)
+                        .border(1.dp, Color(0xFFC7A26E), CircleShape)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(percentInt / 100f)
-                            .background(CognokinetColors.LeafGreen)
+                            .background(Color(0xFF6CC551))
                     )
                 }
             }
@@ -286,33 +274,111 @@ private fun StitchWindingTrailMap(
     Box(
         modifier = Modifier
             .fillMaxWidth(0.95f)
-            .height(710.dp),
+            .height(720.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
+            drawRect(Color(0xFF8DD85B))
 
+            // Pradera con manchas suaves de luz y hierba para evitar un fondo plano.
+            val meadow = listOf(
+                0.08f to 0.08f, 0.28f to 0.12f, 0.78f to 0.08f, 0.94f to 0.22f,
+                0.16f to 0.34f, 0.87f to 0.40f, 0.08f to 0.60f, 0.91f to 0.67f,
+                0.22f to 0.82f, 0.78f to 0.88f, 0.04f to 0.94f, 0.96f to 0.96f
+            )
+            meadow.forEachIndexed { index, point ->
+                drawCircle(
+                    color = if (index % 2 == 0) Color(0xFF9AE365) else Color(0xFF7DCE4E),
+                    radius = w * if (index % 3 == 0) 0.12f else 0.085f,
+                    center = androidx.compose.ui.geometry.Offset(w * point.first, h * point.second)
+                )
+            }
+
+            // Árboles ilustrados, dibujados con tronco y copas en capas.
+            fun tree(x: Float, y: Float, scale: Float) {
+                val cx = w * x
+                val cy = h * y
+                val r = w * scale
+                drawLine(Color(0xFF75401F), androidx.compose.ui.geometry.Offset(cx, cy + r * 1.45f), androidx.compose.ui.geometry.Offset(cx, cy - r * 0.1f), r * 0.38f)
+                drawLine(Color(0xFF8F5126), androidx.compose.ui.geometry.Offset(cx, cy + r * 0.65f), androidx.compose.ui.geometry.Offset(cx - r * 0.7f, cy + r * 0.05f), r * 0.2f)
+                drawLine(Color(0xFF8F5126), androidx.compose.ui.geometry.Offset(cx, cy + r * 0.55f), androidx.compose.ui.geometry.Offset(cx + r * 0.68f, cy - r * 0.08f), r * 0.2f)
+                val leaves = listOf(
+                    Triple(-0.58f, 0.02f, 0.63f), Triple(0.0f, -0.42f, 0.72f),
+                    Triple(0.58f, 0.02f, 0.62f), Triple(-0.27f, 0.34f, 0.62f),
+                    Triple(0.30f, 0.34f, 0.62f), Triple(0.0f, 0.08f, 0.76f)
+                )
+                leaves.forEachIndexed { index, leaf ->
+                    drawCircle(
+                        color = when (index % 3) {
+                            0 -> Color(0xFF238B31)
+                            1 -> Color(0xFF31A936)
+                            else -> Color(0xFF48BD37)
+                        },
+                        radius = r * leaf.third,
+                        center = androidx.compose.ui.geometry.Offset(cx + r * leaf.first, cy + r * leaf.second)
+                    )
+                }
+                drawCircle(Color(0xFF75D94A), r * 0.16f, androidx.compose.ui.geometry.Offset(cx - r * 0.28f, cy - r * 0.46f))
+            }
+            tree(0.06f, 0.08f, 0.13f)
+            tree(0.94f, 0.20f, 0.12f)
+            tree(0.12f, 0.42f, 0.15f)
+            tree(0.88f, 0.55f, 0.13f)
+            tree(0.05f, 0.80f, 0.14f)
+            tree(0.94f, 0.90f, 0.15f)
+            tree(0.32f, 0.94f, 0.08f)
+
+            // Rocas, flores y matas pequeñas llenan los huecos de la pradera.
+            val bushes = listOf(
+                0.28f to 0.08f, 0.74f to 0.15f, 0.32f to 0.25f, 0.91f to 0.31f,
+                0.08f to 0.28f, 0.22f to 0.54f, 0.78f to 0.46f, 0.96f to 0.48f,
+                0.30f to 0.68f, 0.72f to 0.70f, 0.12f to 0.68f, 0.82f to 0.80f,
+                0.28f to 0.88f, 0.68f to 0.94f, 0.12f to 0.97f, 0.90f to 0.98f
+            )
+            bushes.forEachIndexed { index, point ->
+                val x = w * point.first
+                val y = h * point.second
+                val r = w * if (index % 4 == 0) 0.035f else 0.027f
+                drawCircle(Color(0xFF238B3A), r, androidx.compose.ui.geometry.Offset(x, y))
+                drawCircle(Color(0xFF36A944), r * 0.76f, androidx.compose.ui.geometry.Offset(x - r * 0.55f, y - r * 0.25f))
+                drawCircle(Color(0xFF54C34A), r * 0.66f, androidx.compose.ui.geometry.Offset(x + r * 0.48f, y - r * 0.18f))
+            }
+
+            val flowers = listOf(
+                0.12f to 0.18f, 0.35f to 0.14f, 0.82f to 0.26f, 0.16f to 0.50f,
+                0.30f to 0.43f, 0.72f to 0.35f, 0.94f to 0.62f, 0.24f to 0.75f,
+                0.79f to 0.76f, 0.12f to 0.90f, 0.73f to 0.97f, 0.40f to 0.82f
+            )
+            flowers.forEachIndexed { index, point ->
+                val x = w * point.first
+                val y = h * point.second
+                val petal = if (index % 3 == 0) Color(0xFFFFF9D6) else Color(0xFFFFE879)
+                val r = w * 0.009f
+                drawCircle(petal, r, androidx.compose.ui.geometry.Offset(x - r, y))
+                drawCircle(petal, r, androidx.compose.ui.geometry.Offset(x + r, y))
+                drawCircle(petal, r, androidx.compose.ui.geometry.Offset(x, y - r))
+                drawCircle(petal, r, androidx.compose.ui.geometry.Offset(x, y + r))
+                drawCircle(Color(0xFFFFA629), r * 0.55f, androidx.compose.ui.geometry.Offset(x, y))
+            }
+
+            // Camino sinuoso en tonos arena con ribete para separarlo claramente del césped.
             val path = Path().apply {
                 moveTo(w * 0.5f, h * 0.91f)
                 cubicTo(w * 0.5f, h * 0.80f, w * 0.67f, h * 0.73f, w * 0.53f, h * 0.61f)
                 cubicTo(w * 0.39f, h * 0.49f, w * 0.35f, h * 0.41f, w * 0.51f, h * 0.28f)
                 cubicTo(w * 0.64f, h * 0.18f, w * 0.44f, h * 0.11f, w * 0.5f, h * 0.03f)
             }
-
-            drawPath(path = path, color = Color(0xFFC2D6BF), style = Stroke(width = 48f))
-            drawPath(path = path, color = Color(0xFFD3BD98), style = Stroke(width = 36f))
+            drawPath(path, Color(0xFFB78D52), style = Stroke(width = 60f))
+            drawPath(path, Color(0xFFF2D28C), style = Stroke(width = 49f))
+            drawPath(path, Color(0xFFFFE4A6), style = Stroke(width = 37f))
             drawPath(
                 path = path,
-                color = Color(0xFFBCA075),
-                style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 14f), 0f))
+                color = Color(0xFFD4B174),
+                style = Stroke(width = 5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 22f), 0f))
             )
         }
-
-        Text("🌲", fontSize = 48.sp, modifier = Modifier.align(Alignment.TopStart).offset(x = 10.dp, y = 20.dp))
-        Text("🌲", fontSize = 54.sp, modifier = Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = 140.dp))
-        Text("🌱", fontSize = 40.sp, modifier = Modifier.align(Alignment.BottomStart).offset(x = 10.dp, y = (-120).dp))
-        Text("🌿", fontSize = 38.sp, modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-10).dp, y = (-180).dp))
 
         // Estación 5 (Arriba)
         Box(modifier = Modifier.align(Alignment.TopCenter).offset(y = 20.dp)) {
@@ -366,7 +432,7 @@ private fun StitchWindingTrailMap(
                         Box(
                             modifier = Modifier
                                 .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(12.dp))
-                                .border(1.dp, Color(0xFFDECFB5), RoundedCornerShape(12.dp))
+                                .border(1.dp, Color(0xFFC7A26E), RoundedCornerShape(12.dp))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text("¡Tu aventura empieza aquí! 🐾", color = Color(0xFF4E342E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -411,7 +477,7 @@ private fun StationNodeWithMarker(
         if (isCurrent && !isPathCompleted) {
             Box(
                 modifier = Modifier
-                    .background(CognokinetColors.Forest, CircleShape)
+                    .background(Color(0xFF3F6D31), CircleShape)
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text("📍 ¡Estás aquí!", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -420,7 +486,7 @@ private fun StationNodeWithMarker(
         } else if (isPathCompleted && station.id == 5) {
             Box(
                 modifier = Modifier
-                    .background(CognokinetColors.SunAmber, CircleShape)
+                    .background(Color(0xFFFFB300), CircleShape)
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text("🏆 ¡Completado!", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -428,15 +494,16 @@ private fun StationNodeWithMarker(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
+        // Nodo con diseño de tarjeta de estación idéntico a la referencia
         Box(
             modifier = Modifier
-                .size(if (isCurrent) 76.dp else 56.dp)
-                .shadow(6.dp, RoundedCornerShape(20.dp))
+                .size(if (isCurrent) 76.dp else 58.dp)
+                .shadow(6.dp, RoundedCornerShape(18.dp))
                 .background(
-                    if (station.isUnlocked) CognokinetColors.LeafGreen else Color(0xFF57606F),
-                    RoundedCornerShape(20.dp)
+                    if (station.isUnlocked) Color(0xFF6CC551) else Color(0xFF4C4B5E),
+                    RoundedCornerShape(18.dp)
                 )
-                .border(3.dp, if (station.isUnlocked) Color(0xFF5D4037) else Color(0xFF474F5C), RoundedCornerShape(20.dp)),
+                .border(3.dp, if (station.isUnlocked) Color(0xFF3F6D31) else Color(0xFF353443), RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (station.isUnlocked) {
@@ -444,35 +511,32 @@ private fun StationNodeWithMarker(
             } else {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .background(Color(0xFF6D4C41), RoundedCornerShape(8.dp))
-                        .border(1.dp, Color(0xFF533931), RoundedCornerShape(8.dp)),
+                        .size(30.dp)
+                        .background(Color(0xFF353443), RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🔒", fontSize = 12.sp)
+                    Text("🔒", fontSize = 14.sp)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+Spacer(modifier = Modifier.height(4.dp))
 
         Box(
             modifier = Modifier
-                .background(Color.White.copy(alpha = 0.9f), CircleShape)
-                .border(1.dp, Color(0xFFD5DDD3), CircleShape)
-                .padding(horizontal = 10.dp, vertical = 2.dp)
+                .background(Color.White.copy(alpha = 0.95f), CircleShape)
+                .border(1.dp, Color(0xFFC7A26E), CircleShape)
+                .padding(horizontal = 10.dp, vertical = 3.dp)
         ) {
             Text(
                 text = station.title,
-                color = if (station.isUnlocked) CognokinetColors.ForestDark else Color(0xFF556754),
+                color = Color(0xFF2A3D24),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
         }
     }
 }
-
-
 
 @Composable
 private fun StationModalDialog(
@@ -510,7 +574,7 @@ private fun StationModalDialog(
                     modifier = Modifier
                         .size(60.dp)
                         .background(if (station.isUnlocked) Color(0xFFE8F5E9) else Color(0xFFECEFF1), RoundedCornerShape(20.dp))
-                        .border(2.dp, if (station.isUnlocked) CognokinetColors.LeafGreen else Color(0xFF90A4AE), RoundedCornerShape(20.dp)),
+                        .border(2.dp, if (station.isUnlocked) Color(0xFF6CC551) else Color(0xFF90A4AE), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(if (station.isUnlocked) "🥾" else "🔒", fontSize = 30.sp)
@@ -520,7 +584,7 @@ private fun StationModalDialog(
 
                 Text(
                     text = if (station.isUnlocked) "¡DISPONIBLE!" else "ESTACIÓN BLOQUEADA",
-                    color = if (station.isUnlocked) CognokinetColors.Forest else Color(0xFF78909C),
+                    color = if (station.isUnlocked) Color(0xFF3F6D31) else Color(0xFF78909C),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -550,7 +614,7 @@ private fun StationModalDialog(
                     Box(
                         modifier = Modifier
                             .background(Color(0xFFEFE8DA), RoundedCornerShape(12.dp))
-                            .border(1.dp, Color(0xFFDECFB5), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFC7A26E), RoundedCornerShape(12.dp))
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text("⭐ Meta: ${station.goal}", color = Color(0xFF3A2B1E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -563,7 +627,7 @@ private fun StationModalDialog(
                     onClick = onStart,
                     enabled = station.isUnlocked,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (station.isUnlocked) CognokinetColors.Forest else Color(0xFFB0BEC5)
+                        containerColor = if (station.isUnlocked) Color(0xFF6CC551) else Color(0xFFB0BEC5)
                     ),
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier

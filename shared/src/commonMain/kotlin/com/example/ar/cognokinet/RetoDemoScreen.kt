@@ -43,11 +43,12 @@ fun RetoDemoScreen(
             .background(CognokinetColors.NatureBg)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Bar
+            // Header Bar con edge-to-edge statusBarsPadding
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
+                    .statusBarsPadding()
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Row(
@@ -171,8 +172,9 @@ fun RetoDemoScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // VISUALIZADOR ANIMADO DE MODELO 3D FBX
+                        // VISUALIZADOR DE MODELO 3D GLB
                         FBXModelViewer(
+                            exerciseId = activeExercise.id,
                             modelFileName = activeExercise.modelFileName,
                             modifier = Modifier.fillMaxWidth()
                         )

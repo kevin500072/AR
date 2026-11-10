@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.1"
 android-compileSdk = "37"
 android-minSdk = "29"
 android-targetSdk = "37"
@@ -16,6 +16,10 @@ kotlinx-coroutines = "1.11.0"
 kotlinxSerialization = "1.8.0"
 material3 = "1.9.0"
 sceneviewVersion = "4.62.0"
+ktor = "3.1.1"
+credentials = "1.5.0"
+googleid = "1.1.1"
+googleApiClient = "2.7.2"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -39,6 +43,16 @@ kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-s
 kotlinxJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 sceneview = { module = "io.github.sceneview:sceneview", version.ref = "sceneviewVersion" }
 arsceneview = { module = "io.github.sceneview:arsceneview", version.ref = "sceneviewVersion" }
+ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktorClientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktorSerializationJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktorClientAndroid = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktorClientCio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktorClientDarwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+credentialManager = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+credentialManagerPlayServices = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+googleId = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+googleApiClient = { module = "com.google.api-client:google-api-client", version.ref = "googleApiClient" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

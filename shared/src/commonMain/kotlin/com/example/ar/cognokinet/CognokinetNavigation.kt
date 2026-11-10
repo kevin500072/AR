@@ -42,6 +42,14 @@ class CognokinetAppState {
     var isMusicEnabled by mutableStateOf(true)
     var isMusicPlaying by mutableStateOf(false)
 
+    // Sesión de cuenta remota autenticada con Google.
+    var onlineAuthToken by mutableStateOf<String?>(null)
+    var onlineRefreshToken by mutableStateOf<String?>(null)
+    var onlineUserId by mutableStateOf<String?>(null)
+    var onlineRole by mutableStateOf<String?>(null)
+    var onlineClassId by mutableStateOf<String?>(null)
+    var onlineProgressReady by mutableStateOf(false)
+
     // Rol activo ("STUDENT" o "TEACHER")
     var activeRole by mutableStateOf("STUDENT")
     var teacherPinHash by mutableStateOf("")
@@ -75,6 +83,26 @@ class CognokinetAppState {
 
     // Mapa de progresos por alumno (Observable)
     val progressMap = mutableStateMapOf<String, StudentProgress>()
+
+    fun signOutOnlineAccount() {
+        val previousUserId = onlineUserId
+        val previousRole = onlineRole
+        onlineAuthToken = null
+        onlineRefreshToken = null
+        onlineUserId = null
+        onlineRole = null
+        onlineClassId = null
+        onlineProgressReady = false
+        activeRole = "STUDENT"
+        if (previousRole == "STUDENT" && previousUserId != null) {
+            studentProfiles.removeAll { it.id == previousUserId }
+            progressMap.remove(previousUserId)
+            if (activeProfileId == previousUserId) {
+                activeProfileId = studentProfiles.firstOrNull()?.id
+            }
+        }
+        currentScreen = CognokinetScreen.HOME
+    }
 
     var selectedStation by mutableStateOf(1)
 

@@ -49,6 +49,16 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
+            implementation(libs.credentialManager)
+            implementation(libs.credentialManagerPlayServices)
+            implementation(libs.googleId)
+            implementation(libs.ktorClientAndroid)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktorClientDarwin)
+        }
+        jvmMain.dependencies {
+            implementation(libs.ktorClientCio)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -57,6 +67,9 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.ktorClientCore)
+            implementation(libs.ktorClientContentNegotiation)
+            implementation(libs.ktorSerializationJson)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")

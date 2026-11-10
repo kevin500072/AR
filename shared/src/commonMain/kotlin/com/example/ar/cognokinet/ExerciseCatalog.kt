@@ -34,7 +34,7 @@ object ExerciseCatalog {
             suggestedCriteria = listOf("Técnica de impulso", "Amortiguación de caída", "Simetría articular"),
             baseRewardAcorns = 20,
             baseRewardLeaves = 3,
-            modelFileName = "salto normal.glb"
+            modelFileName = "salto_normal.glb"
         ),
         ExerciseItem(
             id = 2,
@@ -53,7 +53,7 @@ object ExerciseCatalog {
             suggestedCriteria = listOf("Ritmo continuo", "Coordinación mano-pie", "Mantener postura"),
             baseRewardAcorns = 30,
             baseRewardLeaves = 4,
-            modelFileName = "saltar la cuerda.glb"
+            modelFileName = "saltar_la_cuerda.glb"
         ),
         ExerciseItem(
             id = 3,
@@ -72,7 +72,7 @@ object ExerciseCatalog {
             suggestedCriteria = listOf("Puntería y precisión", "Mecánica de brazo", "Control de fuerza"),
             baseRewardAcorns = 30,
             baseRewardLeaves = 4,
-            modelFileName = "Lanzar.glb"
+            modelFileName = "lanzar.glb"
         ),
         ExerciseItem(
             id = 4,

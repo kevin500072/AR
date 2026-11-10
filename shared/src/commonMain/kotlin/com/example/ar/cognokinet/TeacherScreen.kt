@@ -25,36 +25,46 @@ import com.example.ar.cognokinet.domain.DecisionStatus
 import com.example.ar.cognokinet.domain.EvaluationRequest
 import com.example.ar.cognokinet.domain.EvaluationStatus
 import com.example.ar.cognokinet.domain.IdGenerator
+import kotlinx.coroutines.launch
 
 @Composable
 fun TeacherScreen(
     appState: CognokinetAppState,
+    sessionStore: OnlineSessionStore,
     onBack: () -> Unit
 ) {
-    var isAuthenticated by remember { mutableStateOf(appState.isTeacherPinSet) }
-    var emailInput by remember { mutableStateOf("prof.ana@escuela.edu") }
-    var passwordInput by remember { mutableStateOf("123456") }
-
+    var isAuthenticated by remember {
+        mutableStateOf(appState.onlineRole == "TEACHER")
+    }
+    val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf("clases") }
 
-    var classrooms by remember {
-        mutableStateOf(
-            listOf(
-                Classroom(
-                    id = "class_1",
-                    name = "Educación Física 4º A",
-                    grade = "4º",
-                    group = "A",
-                    schoolYear = "2024-2025",
-                    teacherId = "teacher_1",
-                    teacherName = appState.teacherName,
-                    joinCode = "EF4A24",
-                    joinOpen = true
-                )
-            )
-        )
+    var classrooms by remember { mutableStateOf<List<Classroom>>(emptyList()) }
+    var activeClassroom by remember { mutableStateOf<Classroom?>(null) }
+    var remoteStudents by remember { mutableStateOf<List<OnlineClassStudent>>(emptyList()) }
+
+    LaunchedEffect(appState.onlineAuthToken) {
+        val token = appState.onlineAuthToken ?: return@LaunchedEffect
+        try {
+            classrooms = OnlineClassApi.getClasses(token)
+            activeClassroom = classrooms.firstOrNull()
+        } catch (error: Exception) {
+            appState.snackbarMessage = error.message ?: "No se pudieron cargar las clases."
+        }
     }
-    var activeClassroom by remember { mutableStateOf<Classroom?>(classrooms.firstOrNull()) }
+    LaunchedEffect(appState.onlineAuthToken, activeClassroom?.id) {
+        val token = appState.onlineAuthToken
+        val classId = activeClassroom?.id
+        if (token != null && classId != null) {
+            try {
+                remoteStudents = OnlineClassApi.getClassStudents(token, classId)
+            } catch (error: Exception) {
+                appState.snackbarMessage = error.message ?: "No se pudieron cargar los alumnos."
+            }
+        } else {
+            remoteStudents = emptyList()
+        }
+    }
 
     var showCreateClassDialog by remember { mutableStateOf(false) }
     var newClassName by remember { mutableStateOf("") }
@@ -112,86 +122,84 @@ fun TeacherScreen(
                         )
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFFFF8E1), CircleShape)
-                            .border(1.dp, Color(0xFFFFD54F), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🎓", fontSize = 20.sp)
+                    if (appState.onlineRole == "TEACHER") {
+                        TextButton(onClick = {
+                            val refreshToken = appState.onlineRefreshToken
+                            sessionStore.clear()
+                            appState.signOutOnlineAccount()
+                            isAuthenticated = false
+                            if (refreshToken != null) scope.launch {
+                                runCatching { OnlineClassApi.logout(refreshToken) }
+                            }
+                            onBack()
+                        }) {
+                            Text("Cerrar sesión", color = CognokinetColors.Forest, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFFFF8E1), CircleShape)
+                                .border(1.dp, Color(0xFFFFD54F), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🎓", fontSize = 20.sp)
+                        }
                     }
                 }
             }
 
             if (!isAuthenticated) {
-                // LOGIN FORM FOR TEACHER
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = CognokinetColors.Parchment),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(8.dp, RoundedCornerShape(20.dp))
+                        modifier = Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(20.dp))
                     ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(
-                                "Iniciar Sesión - Profesora",
-                                fontSize = 18.sp,
+                                "Cuenta de profesor",
+                                fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CognokinetColors.Graphite
                             )
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            OutlinedTextField(
-                                value = emailInput,
-                                onValueChange = { emailInput = it },
-                                label = { Text("Correo institucional") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Inicia sesión con Google. Si es tu primera vez, tu cuenta se creará automáticamente.",
+                                fontSize = 14.sp,
+                                color = Color(0xFF5C3A21)
                             )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            OutlinedTextField(
-                                value = passwordInput,
-                                onValueChange = { passwordInput = it },
-                                label = { Text("Contraseña") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
                             Spacer(modifier = Modifier.height(18.dp))
-
-                            Button(
-                                onClick = {
-                                    if (emailInput.isNotBlank() && passwordInput.length >= 6) {
-                                        appState.setTeacherProfile(
-                                            appState.teacherName,
-                                            appState.teacherGrade,
-                                            appState.teacherSubject,
-                                            passwordInput
-                                        )
-                                        isAuthenticated = true
-                                    } else {
-                                        appState.snackbarMessage = "Ingresa correo y contraseña válida (mínimo 6 caracteres)"
+                            GoogleSignInButton(
+                                onIdToken = { idToken ->
+                                    scope.launch {
+                                        try {
+                                            val auth = OnlineClassApi.signInWithGoogle(
+                                                OnlineGoogleLoginRequest(idToken = idToken, role = "TEACHER")
+                                            )
+                                            appState.onlineAuthToken = auth.token
+                                            appState.onlineRefreshToken = auth.refreshToken
+                                            appState.onlineProgressReady = false
+                                            sessionStore.save(OnlineClassApi.encodeSession(auth))
+                                            appState.onlineUserId = auth.userId
+                                            appState.onlineRole = auth.role
+                                            appState.activeRole = auth.role
+                                            appState.teacherName = auth.displayName.ifBlank { appState.teacherName }
+                                            isAuthenticated = true
+                                        } catch (error: Exception) {
+                                            appState.snackbarMessage = error.message ?: "No se pudo acceder con Google."
+                                        }
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                            ) {
-                                Text("Entrar al Panel", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            }
+                                onError = { appState.snackbarMessage = it },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -430,24 +438,69 @@ fun TeacherScreen(
                             }
 
                             else -> {
-                                Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                                    shape = RoundedCornerShape(16.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                            "Lista de alumnos y progreso de la clase",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CognokinetColors.Graphite
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            "Selecciona un alumno para revisar su expediente individual, avances en las estaciones e insignias ganadas.",
-                                            fontSize = 13.sp,
-                                            color = Color(0xFF616161)
-                                        )
+                                Text(
+                                    if (selectedTab == "alumnos") "Alumnos de ${activeClassroom?.name ?: "la clase"}" else "Progreso sincronizado",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CognokinetColors.Graphite
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                if (appState.onlineAuthToken == null) {
+                                    Text("Inicia sesión con Google para consultar los alumnos en línea.")
+                                } else if (remoteStudents.isEmpty()) {
+                                    Text("Aún no hay alumnos inscritos en esta clase.")
+                                } else {
+                                    remoteStudents.forEach { record ->
+                                        val progress = record.progress
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(14.dp)) {
+                                                Text(record.profile.displayName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    "${record.profile.age} años · ${record.profile.grade} · ${record.enrollmentStatus}",
+                                                    fontSize = 12.sp,
+                                                    color = CognokinetColors.Forest
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    if (progress == null) "Todavía no se sincroniza su progreso."
+                                                    else "Nivel ${progress.level} · ${progress.xp} XP · ${progress.completedStationsCount}/5 estaciones · ${progress.unlockedBadges.size} insignias",
+                                                    fontSize = 13.sp,
+                                                    color = CognokinetColors.Graphite
+                                                )
+                                                if (record.enrollmentStatus == "PENDING") {
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                        Button(onClick = {
+                                                            val token = appState.onlineAuthToken
+                                                            val classId = activeClassroom?.id
+                                                            if (token != null && classId != null) scope.launch {
+                                                                try {
+                                                                    OnlineClassApi.approveStudent(token, classId, record.profile.id)
+                                                                    remoteStudents = OnlineClassApi.getClassStudents(token, classId)
+                                                                } catch (error: Exception) {
+                                                                    appState.snackbarMessage = error.message ?: "No se pudo aprobar al alumno."
+                                                                }
+                                                            }
+                                                        }) { Text("Aprobar") }
+                                                        TextButton(onClick = {
+                                                            val token = appState.onlineAuthToken
+                                                            val classId = activeClassroom?.id
+                                                            if (token != null && classId != null) scope.launch {
+                                                                try {
+                                                                    OnlineClassApi.rejectStudent(token, classId, record.profile.id)
+                                                                    remoteStudents = OnlineClassApi.getClassStudents(token, classId)
+                                                                } catch (error: Exception) {
+                                                                    appState.snackbarMessage = error.message ?: "No se pudo rechazar al alumno."
+                                                                }
+                                                            }
+                                                        }) { Text("Rechazar") }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -496,21 +549,42 @@ fun TeacherScreen(
                     Button(
                         onClick = {
                             if (newClassName.isNotBlank()) {
-                                val code = "EF" + (100..999).random()
-                                val newCls = Classroom(
-                                    id = IdGenerator.newId(),
-                                    name = newClassName,
-                                    grade = newClassGrade,
-                                    group = newClassGroup,
-                                    schoolYear = newClassYear,
-                                    teacherId = "teacher_1",
-                                    teacherName = appState.teacherName,
-                                    joinCode = code,
-                                    joinOpen = true
-                                )
-                                classrooms = classrooms + newCls
-                                activeClassroom = newCls
-                                showCreateClassDialog = false
+                                val token = appState.onlineAuthToken
+                                if (token != null) {
+                                    scope.launch {
+                                        try {
+                                            val newClass = OnlineClassApi.createClass(
+                                                token,
+                                                OnlineCreateClassRequest(
+                                                    name = newClassName,
+                                                    grade = newClassGrade,
+                                                    group = newClassGroup,
+                                                    schoolYear = newClassYear
+                                                )
+                                            )
+                                            classrooms = classrooms + newClass
+                                            activeClassroom = newClass
+                                            showCreateClassDialog = false
+                                        } catch (error: Exception) {
+                                            appState.snackbarMessage = error.message ?: "No se pudo crear la clase."
+                                        }
+                                    }
+                                } else {
+                                    val newClass = Classroom(
+                                        id = IdGenerator.newId(),
+                                        name = newClassName,
+                                        grade = newClassGrade,
+                                        group = newClassGroup,
+                                        schoolYear = newClassYear,
+                                        teacherId = "teacher_1",
+                                        teacherName = appState.teacherName,
+                                        joinCode = "EF" + (100..999).random(),
+                                        joinOpen = true
+                                    )
+                                    classrooms = classrooms + newClass
+                                    activeClassroom = newClass
+                                    showCreateClassDialog = false
+                                }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),

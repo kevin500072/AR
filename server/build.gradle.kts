@@ -27,6 +27,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.59.0")
     implementation("org.xerial:sqlite-jdbc:3.49.1.0")
     implementation("org.mindrot:jbcrypt:0.4")
+    implementation(libs.googleApiClient)
 
     // Testing
     testImplementation("io.ktor:ktor-server-test-host-jvm:$ktorVersion")

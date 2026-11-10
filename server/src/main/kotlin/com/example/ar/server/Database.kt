@@ -16,6 +16,26 @@ object TeachersTable : Table("teachers") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object RefreshTokensTable : Table("refresh_tokens") {
+    val tokenHash = varchar("token_hash", 64)
+    val userId = varchar("user_id", 64).index()
+    val role = varchar("role", 16)
+    val expiresAt = long("expires_at")
+    val createdAt = long("created_at")
+
+    override val primaryKey = PrimaryKey(tokenHash)
+}
+
+object GoogleAccountsTable : Table("google_accounts") {
+    val googleSubject = varchar("google_subject", 128)
+    val email = varchar("email", 128)
+    val role = varchar("role", 16)
+    val userId = varchar("user_id", 64).uniqueIndex()
+    val createdAt = long("created_at")
+
+    override val primaryKey = PrimaryKey(googleSubject)
+}
+
 object ClassroomsTable : Table("classrooms") {
     val id = varchar("id", 64)
     val name = varchar("name", 128)
@@ -40,6 +60,14 @@ object StudentsTable : Table("students") {
     val createdAt = long("created_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+object StudentProgressTable : Table("student_progress") {
+    val studentId = varchar("student_id", 64).references(StudentsTable.id)
+    val progressJson = text("progress_json")
+    val updatedAt = long("updated_at")
+
+    override val primaryKey = PrimaryKey(studentId)
 }
 
 object EnrollmentsTable : Table("enrollments") {
@@ -119,20 +147,22 @@ object EvaluationScoresTable : Table("evaluation_scores") {
 }
 
 object DbFactory {
-    fun init(inMemory: Boolean = true) {
-        val dbFile = File("./build/server_test.db")
-        if (inMemory && dbFile.exists()) {
-            dbFile.delete()
-        }
-        val url = if (inMemory) "jdbc:sqlite:${dbFile.absolutePath}" else "jdbc:sqlite:./cognokinet.db"
-        Database.connect(url, "org.sqlite.JDBC")
+    fun init(inMemory: Boolean = false) {
+        val dbPath = System.getenv("COGNOKINET_DB_PATH") ?: "./cognokinet.db"
+        val dbFile = File(dbPath)
+        dbFile.parentFile?.mkdirs()
+        if (inMemory && dbFile.exists()) dbFile.delete()
+        Database.connect("jdbc:sqlite:${dbFile.absolutePath}", "org.sqlite.JDBC")
 
         transaction {
             SchemaUtils.create(
+                GoogleAccountsTable,
+                RefreshTokensTable,
                 TeachersTable,
                 ClassroomsTable,
                 StudentsTable,
                 EnrollmentsTable,
+                StudentProgressTable,
                 RubricsTable,
                 RubricCriteriaTable,
                 RubricLevelsTable,

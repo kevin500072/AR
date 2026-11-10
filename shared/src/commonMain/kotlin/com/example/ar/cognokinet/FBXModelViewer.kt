@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 
 @Composable
 expect fun FBXModelViewer(
+    exerciseId: Int,
     modelFileName: String,
     modifier: Modifier = Modifier
 )
