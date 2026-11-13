@@ -48,7 +48,7 @@ fun CognokinetApp(
                 ?: com.example.ar.cognokinet.domain.StudentProgress.inicial(profile.id)
             appState.activeProfileId = profile.id
             appState.onlineProgressReady = latestProgress.isSuccess
-            appState.currentScreen = CognokinetScreen.MAP
+            appState.currentScreen = CognokinetScreen.HOME
             if (refreshResult.isSuccess) sessionStore.save(OnlineClassApi.encodeSession(completeSession))
             if (refreshResult.isFailure) {
                 appState.snackbarMessage = "Sin conexión: se usará el progreso guardado en este dispositivo."
@@ -56,7 +56,7 @@ fun CognokinetApp(
         } else {
             appState.teacherName = restored.displayName.ifBlank { appState.teacherName }
             appState.onlineProgressReady = false
-            appState.currentScreen = CognokinetScreen.TEACHER_DASHBOARD
+            appState.currentScreen = CognokinetScreen.HOME
             if (refreshResult.isSuccess) sessionStore.save(OnlineClassApi.encodeSession(restored))
             if (refreshResult.isFailure) {
                 appState.snackbarMessage = "Sin conexión: se restauró la cuenta guardada en este dispositivo."

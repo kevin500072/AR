@@ -18,7 +18,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private const val API_BASE_URL = "http://127.0.0.1:8080"
+private const val API_BASE_URL = "http://192.168.100.33:8080"
 
 @Serializable
 data class OnlineGoogleLoginRequest(
