@@ -1,3 +1,6 @@
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.tasks.Sync
+
 plugins {
     alias(libs.plugins.kotlinJvm)
     id("org.jetbrains.kotlin.plugin.serialization")
@@ -26,6 +29,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-dao:0.59.0")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.59.0")
     implementation("org.xerial:sqlite-jdbc:3.49.1.0")
+    implementation("org.postgresql:postgresql:42.7.14")
     implementation("org.mindrot:jbcrypt:0.4")
     implementation(libs.googleApiClient)
 
@@ -38,4 +42,9 @@ dependencies {
 
 tasks.test {
     useJUnit()
+}
+
+tasks.named<Sync>("installDist") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    into(layout.buildDirectory.dir("install/server-docker"))
 }

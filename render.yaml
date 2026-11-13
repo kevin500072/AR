@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: cognokinet-api
+    runtime: docker
+    region: oregon
+    plan: 0.5c-512mb
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: GOOGLE_WEB_CLIENT_ID
+        value: 619352913012-f0avb6ir3m54v56445oajdalardqhued.apps.googleusercontent.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cognokinet-postgres
+          property: connectionString
+      - key: DB_USER
+        fromDatabase:
+          name: cognokinet-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: cognokinet-postgres
+          property: password
+
+databases:
+  - name: cognokinet-postgres
+    databaseName: cognokinet
+    user: cognokinet
+    region: oregon
+    plan: 0.1c-256mb
+    postgresMajorVersion: "17"

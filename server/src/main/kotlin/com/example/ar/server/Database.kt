@@ -5,6 +5,7 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.File
+import java.net.URI
 
 object TeachersTable : Table("teachers") {
     val id = varchar("id", 64)
@@ -148,11 +149,42 @@ object EvaluationScoresTable : Table("evaluation_scores") {
 
 object DbFactory {
     fun init(inMemory: Boolean = false) {
-        val dbPath = System.getenv("COGNOKINET_DB_PATH") ?: "./cognokinet.db"
-        val dbFile = File(dbPath)
-        dbFile.parentFile?.mkdirs()
-        if (inMemory && dbFile.exists()) dbFile.delete()
-        Database.connect("jdbc:sqlite:${dbFile.absolutePath}", "org.sqlite.JDBC")
+        val databaseUrl = System.getenv("DATABASE_URL")
+        if (!databaseUrl.isNullOrBlank()) {
+            val dbUser = System.getenv("DB_USER").orEmpty()
+            val dbPassword = System.getenv("DB_PASSWORD").orEmpty()
+            if (databaseUrl.startsWith("jdbc:postgresql:")) {
+                Database.connect(
+                    databaseUrl,
+                    driver = "org.postgresql.Driver",
+                    user = dbUser,
+                    password = dbPassword
+                )
+            } else {
+                val uri = URI(databaseUrl)
+                require(uri.scheme == "postgres" || uri.scheme == "postgresql") {
+                    "DATABASE_URL must be a PostgreSQL connection URL"
+                }
+                val port = uri.port.takeIf { it > 0 } ?: 5432
+                val query = uri.rawQuery?.let { "?$it" }.orEmpty()
+                val jdbcUrl = "jdbc:postgresql://${uri.host}:$port${uri.rawPath}$query"
+                Database.connect(
+                    jdbcUrl,
+                    driver = "org.postgresql.Driver",
+                    user = dbUser,
+                    password = dbPassword
+                )
+            }
+        } else {
+            check(System.getenv("APP_ENV") != "production") {
+                "DATABASE_URL is required in production; SQLite is only for local development"
+            }
+            val dbPath = System.getenv("COGNOKINET_DB_PATH") ?: "./cognokinet.db"
+            val dbFile = File(dbPath)
+            dbFile.parentFile?.mkdirs()
+            if (inMemory && dbFile.exists()) dbFile.delete()
+            Database.connect("jdbc:sqlite:${dbFile.absolutePath}", "org.sqlite.JDBC")
+        }
 
         transaction {
             SchemaUtils.create(

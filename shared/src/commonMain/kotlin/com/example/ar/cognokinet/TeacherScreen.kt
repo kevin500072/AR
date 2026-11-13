@@ -33,38 +33,13 @@ fun TeacherScreen(
     sessionStore: OnlineSessionStore,
     onBack: () -> Unit
 ) {
-    var isAuthenticated by remember {
-        mutableStateOf(appState.onlineRole == "TEACHER")
-    }
+    var isAuthenticated by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf("clases") }
 
-    var classrooms by remember { mutableStateOf<List<Classroom>>(emptyList()) }
-    var activeClassroom by remember { mutableStateOf<Classroom?>(null) }
+    var classrooms by remember { mutableStateOf(appState.localClassrooms.toList()) }
+    var activeClassroom by remember { mutableStateOf(appState.localClassrooms.firstOrNull()) }
     var remoteStudents by remember { mutableStateOf<List<OnlineClassStudent>>(emptyList()) }
-
-    LaunchedEffect(appState.onlineAuthToken) {
-        val token = appState.onlineAuthToken ?: return@LaunchedEffect
-        try {
-            classrooms = OnlineClassApi.getClasses(token)
-            activeClassroom = classrooms.firstOrNull()
-        } catch (error: Exception) {
-            appState.snackbarMessage = error.message ?: "No se pudieron cargar las clases."
-        }
-    }
-    LaunchedEffect(appState.onlineAuthToken, activeClassroom?.id) {
-        val token = appState.onlineAuthToken
-        val classId = activeClassroom?.id
-        if (token != null && classId != null) {
-            try {
-                remoteStudents = OnlineClassApi.getClassStudents(token, classId)
-            } catch (error: Exception) {
-                appState.snackbarMessage = error.message ?: "No se pudieron cargar los alumnos."
-            }
-        } else {
-            remoteStudents = emptyList()
-        }
-    }
 
     var showCreateClassDialog by remember { mutableStateOf(false) }
     var newClassName by remember { mutableStateOf("") }
@@ -446,7 +421,7 @@ fun TeacherScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 if (appState.onlineAuthToken == null) {
-                                    Text("Inicia sesión con Google para consultar los alumnos en línea.")
+                                    Text("Modo local: los perfiles y el progreso se guardan en este dispositivo.")
                                 } else if (remoteStudents.isEmpty()) {
                                     Text("Aún no hay alumnos inscritos en esta clase.")
                                 } else {
@@ -582,6 +557,7 @@ fun TeacherScreen(
                                         joinOpen = true
                                     )
                                     classrooms = classrooms + newClass
+                                    appState.localClassrooms.add(newClass)
                                     activeClassroom = newClass
                                     showCreateClassDialog = false
                                 }

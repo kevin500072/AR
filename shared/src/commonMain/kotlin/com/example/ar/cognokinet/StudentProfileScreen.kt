@@ -38,9 +38,7 @@ fun StudentProfileScreen(
     var gradeInput by remember { mutableStateOf("3º Grado") }
     var selectedAvatarId by remember { mutableStateOf("fox") }
     var consentChecked by remember { mutableStateOf(false) }
-    var joinCodeInput by remember { mutableStateOf("") }
     var returningOnlineStudent by remember { mutableStateOf(false) }
-    var isCreatingOnlineAccount by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val activeProfile = appState.activeProfile
@@ -150,13 +148,7 @@ fun StudentProfileScreen(
                             }
 
                             if (editingProfileId == null) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(
-                                        checked = returningOnlineStudent,
-                                        onCheckedChange = { returningOnlineStudent = it }
-                                    )
-                                    Text("Ya tengo una cuenta de alumno")
-                                }
+                                Text("El perfil y el progreso se guardarán en este dispositivo.")
                             }
 
                             if (editingProfileId != null || !returningOnlineStudent) {
@@ -202,17 +194,6 @@ fun StudentProfileScreen(
                                     }
                                 }
 
-                                if (editingProfileId == null) {
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    OutlinedTextField(
-                                        value = joinCodeInput,
-                                        onValueChange = { joinCodeInput = it.uppercase().take(6) },
-                                        label = { Text("Código de clase (6 caracteres)") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true
-                                    )
-                                }
-
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Text("Elige un Avatar Ilustrado:", color = Color(0xFF5C3A21), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(6.dp))
@@ -245,77 +226,39 @@ fun StudentProfileScreen(
                                     )
                                 }
                             } else {
-                                Text("Google recuperará el perfil y progreso de la cuenta seleccionada.")
+                                Text("Selecciona un perfil local guardado en este dispositivo.")
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
                             if (editingProfileId == null) {
-                                GoogleSignInButton(
-                                    onIdToken = { idToken ->
+                                Button(
+                                    onClick = {
                                         val age = ageInput.toIntOrNull() ?: 0
-                                        if (!returningOnlineStudent &&
-                                            (nameInput.isBlank() || age !in 3..18 || gradeInput.isBlank() ||
-                                                joinCodeInput.length != 6 || !consentChecked)
+                                        if (nameInput.isBlank() || age !in 3..18 ||
+                                            gradeInput.isBlank() || !consentChecked
                                         ) {
                                             showValidationError = true
                                             appState.snackbarMessage =
-                                                "Completa nombre, edad, grado, código de clase y autorización del tutor."
+                                                "Completa nombre, edad, grado y autorización del tutor."
                                         } else {
                                             showValidationError = false
-                                            isCreatingOnlineAccount = true
-                                            scope.launch {
-                                                try {
-                                                    val result = OnlineClassApi.signInWithGoogle(
-                                                        OnlineGoogleLoginRequest(
-                                                            idToken = idToken,
-                                                            role = "STUDENT",
-                                                            joinCode = if (returningOnlineStudent) "" else joinCodeInput,
-                                                            displayName = if (returningOnlineStudent) "" else nameInput,
-                                                            age = if (returningOnlineStudent) 0 else age,
-                                                            grade = if (returningOnlineStudent) "" else gradeInput,
-                                                            avatarId = selectedAvatarId,
-                                                            consentGiven = consentChecked
-                                                        )
-                                                    )
-                                                    appState.onlineAuthToken = result.token
-                                                    appState.onlineRefreshToken = result.refreshToken
-                                                    appState.onlineProgressReady = result.role == "STUDENT"
-                                                    sessionStore.save(OnlineClassApi.encodeSession(result))
-                                                    appState.onlineUserId = result.userId
-                                                    appState.onlineRole = result.role
-                                                    appState.onlineClassId = result.classId
-                                                    appState.activeRole = result.role
-                                                    val profile = com.example.ar.cognokinet.domain.StudentProfile(
-                                                        id = result.userId,
-                                                        displayName = result.displayName.ifBlank { nameInput },
-                                                        age = result.age.takeIf { it > 0 } ?: age,
-                                                        grade = result.grade.ifBlank { gradeInput },
-                                                        avatarId = result.avatarId.ifBlank { selectedAvatarId },
-                                                        consentGiven = result.consentGiven || consentChecked
-                                                    )
-                                                    val index = appState.studentProfiles.indexOfFirst { it.id == result.userId }
-                                                    if (index >= 0) appState.studentProfiles[index] = profile
-                                                    else appState.studentProfiles.add(profile)
-                                                    appState.progressMap[result.userId] = result.progress
-                                                        ?: com.example.ar.cognokinet.domain.StudentProgress.inicial(result.userId)
-                                                    appState.activeProfileId = result.userId
-                                                    isCreatingNew = false
-                                                    onGoToMap()
-                                                } catch (error: Exception) {
-                                                    appState.snackbarMessage =
-                                                        error.message ?: "No se pudo completar el acceso con Google."
-                                                } finally {
-                                                    isCreatingOnlineAccount = false
-                                                }
-                                            }
+                                            appState.createStudentProfile(
+                                                name = nameInput.trim(),
+                                                age = age,
+                                                grade = gradeInput.trim(),
+                                                avatarId = selectedAvatarId,
+                                                consentGiven = true
+                                            )
+                                            isCreatingNew = false
+                                            onGoToMap()
                                         }
                                     },
-                                    onError = { appState.snackbarMessage = it },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CognokinetColors.Forest),
+                                    shape = RoundedCornerShape(16.dp),
                                     modifier = Modifier.fillMaxWidth().height(50.dp)
-                                )
-                                if (isCreatingOnlineAccount) {
-                                    Text("Creando o recuperando tu cuenta con Google…")
+                                ) {
+                                    Text("Crear perfil local y continuar", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                 }
                             } else {
                                 Button(

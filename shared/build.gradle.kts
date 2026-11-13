@@ -1,4 +1,33 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+abstract class GenerateApiConfigTask : DefaultTask() {
+    @get:Input
+    abstract val apiBaseUrl: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val escapedUrl = apiBaseUrl.get()
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+        val file = outputDirectory.file("com/example/ar/cognokinet/ApiConfig.kt").get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """package com.example.ar.cognokinet
+
+internal const val API_BASE_URL = "$escapedUrl"
+""".trimIndent()
+        )
+    }
+}
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -6,6 +35,20 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+val apiBaseUrlProvider = providers.gradleProperty("cognokinetApiBaseUrl")
+    .orElse(providers.environmentVariable("COGNOKINET_API_BASE_URL"))
+    .orElse("http://192.168.100.33:8080")
+val generatedApiConfigDir = layout.buildDirectory.dir("generated/api-config/commonMain")
+val generateApiConfig = tasks.register<GenerateApiConfigTask>("generateApiConfig") {
+    apiBaseUrl.set(apiBaseUrlProvider)
+    outputDirectory.set(generatedApiConfigDir)
+}
+tasks.configureEach {
+    if (name.startsWith("compile") && (name.contains("Kotlin") || name.endsWith("AndroidMain"))) {
+        dependsOn(generateApiConfig)
+    }
 }
 
 kotlin {
@@ -79,6 +122,8 @@ kotlin {
         }
     }
 }
+
+kotlin.sourceSets.getByName("commonMain").kotlin.srcDir(generatedApiConfigDir)
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)

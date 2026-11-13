@@ -29,6 +29,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.net.URI
 import java.util.*
 
 @Serializable
@@ -109,14 +110,21 @@ data class CreateClassRequest(
 )
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
+    val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
+    embeddedServer(Netty, port = port, host = "0.0.0.0", module = Application::module)
         .start(wait = true)
 }
 
 fun Application.module() {
+    val isProduction = System.getenv("APP_ENV") == "production"
+    val secret = System.getenv("JWT_SECRET")
+        ?: if (isProduction) error("JWT_SECRET must be configured in production")
+        else "local-dev-only-change-before-deploy-cognokinet"
+    val googleWebClientId = System.getenv("GOOGLE_WEB_CLIENT_ID")
+        ?: if (isProduction) error("GOOGLE_WEB_CLIENT_ID must be configured in production")
+        else "619352913012-f0avb6ir3m54v56445oajdalardqhued.apps.googleusercontent.com"
     DbFactory.init()
 
-    val secret = System.getenv("JWT_SECRET") ?: "local-dev-only-change-before-deploy-cognokinet"
     val issuer = "http://cognokinet.server"
     val audience = "cognokinet_app"
 
@@ -125,10 +133,19 @@ fun Application.module() {
     }
 
     install(CORS) {
-        anyHost()
+        if (!isProduction) {
+            anyHost()
+        } else {
+            System.getenv("CORS_ALLOWED_ORIGIN")?.let { origin ->
+                val uri = URI(origin)
+                allowHost(uri.host, schemes = listOf(uri.scheme))
+            }
+        }
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
         allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Patch)
         allowMethod(HttpMethod.Delete)
@@ -186,6 +203,10 @@ fun Application.module() {
     }
 
     routing {
+        get("/health") {
+            call.respond(mapOf("status" to "ok"))
+        }
+
         route("/auth") {
             post("/refresh") {
                 val request = call.receive<RefreshTokenRequest>()
@@ -261,13 +282,11 @@ fun Application.module() {
 
             post("/google") {
                 val request = call.receive<GoogleLoginRequest>()
-                val webClientId = System.getenv("GOOGLE_WEB_CLIENT_ID")
-                    ?: "619352913012-f0avb6ir3m54v56445oajdalardqhued.apps.googleusercontent.com"
                 val verifiedToken = try {
                     GoogleIdTokenVerifier.Builder(
                         GoogleNetHttpTransport.newTrustedTransport(),
                         GsonFactory.getDefaultInstance()
-                    ).setAudience(listOf(webClientId)).build().verify(request.idToken)
+                    ).setAudience(listOf(googleWebClientId)).build().verify(request.idToken)
                 } catch (_: Exception) {
                     return@post call.respond(HttpStatusCode.ServiceUnavailable, "No se pudo verificar la cuenta de Google")
                 } ?: return@post call.respond(HttpStatusCode.Unauthorized, "El token de Google no es válido")

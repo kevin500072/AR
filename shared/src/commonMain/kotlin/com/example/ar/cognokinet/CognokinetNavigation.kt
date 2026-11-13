@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.ar.cognokinet.domain.Classroom
 import com.example.ar.cognokinet.domain.DecisionStatus
 import com.example.ar.cognokinet.domain.EvaluationRequest
 import com.example.ar.cognokinet.domain.EvaluationReview
@@ -13,6 +14,8 @@ import com.example.ar.cognokinet.domain.IdGenerator
 import com.example.ar.cognokinet.domain.SessionResult
 import com.example.ar.cognokinet.domain.StudentProfile
 import com.example.ar.cognokinet.domain.StudentProgress
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 enum class CognokinetScreen {
     HOME,
@@ -77,7 +80,9 @@ class CognokinetAppState {
     // Snackbar para avisos
     var snackbarMessage by mutableStateOf<String?>(null)
 
-    // Lista de perfiles de alumnos almacenados
+    // Perfiles y progreso que se guardan localmente en este dispositivo.
+    var localStateLoaded by mutableStateOf(false)
+    val localClassrooms = mutableStateListOf<Classroom>()
     val studentProfiles = mutableStateListOf<StudentProfile>()
     var activeProfileId by mutableStateOf<String?>(null)
 
@@ -120,6 +125,43 @@ class CognokinetAppState {
     var lateralityEvaluationActive by mutableStateOf(true)
     var aiSkeletonTrackingActive by mutableStateOf(true)
 
+    fun localSnapshotJson(): String = Json { encodeDefaults = true }.encodeToString(
+        LocalGameSnapshot(
+            studentProfiles = studentProfiles.toList(),
+            activeProfileId = activeProfileId,
+            progress = progressMap.values.toList(),
+            teacherName = teacherName,
+            teacherGrade = teacherGrade,
+            teacherSubject = teacherSubject,
+            classrooms = localClassrooms.toList(),
+            evaluationRequests = evaluationRequests.toList(),
+            evaluationReviews = evaluationReviews.toList(),
+            isMusicEnabled = isMusicEnabled
+        )
+    )
+
+    fun restoreLocalSnapshot(snapshotJson: String) {
+        val snapshot = runCatching {
+            Json { ignoreUnknownKeys = true }.decodeFromString<LocalGameSnapshot>(snapshotJson)
+        }.getOrNull() ?: return
+
+        studentProfiles.clear()
+        studentProfiles.addAll(snapshot.studentProfiles)
+        progressMap.clear()
+        snapshot.progress.forEach { progressMap[it.profileId] = it }
+        activeProfileId = snapshot.activeProfileId?.takeIf { id -> studentProfiles.any { it.id == id } }
+        teacherName = snapshot.teacherName
+        teacherGrade = snapshot.teacherGrade
+        teacherSubject = snapshot.teacherSubject
+        localClassrooms.clear()
+        localClassrooms.addAll(snapshot.classrooms)
+        evaluationRequests.clear()
+        evaluationRequests.addAll(snapshot.evaluationRequests)
+        evaluationReviews.clear()
+        evaluationReviews.addAll(snapshot.evaluationReviews)
+        isMusicEnabled = snapshot.isMusicEnabled
+    }
+
     val activeProfile: StudentProfile?
         get() = studentProfiles.firstOrNull { it.id == activeProfileId }
 
@@ -146,6 +188,8 @@ class CognokinetAppState {
     }
 
     fun navigateTo(screen: CognokinetScreen) {
+        if (screen == CognokinetScreen.TEACHER_DASHBOARD) activeRole = "TEACHER"
+        if (screen == CognokinetScreen.HOME) activeRole = "STUDENT"
         if (activeProfile == null && screen != CognokinetScreen.HOME && screen != CognokinetScreen.STUDENT_PROFILE && screen != CognokinetScreen.TEACHER_DASHBOARD) {
             snackbarMessage = "Primero crea tu perfil"
             currentScreen = CognokinetScreen.HOME
